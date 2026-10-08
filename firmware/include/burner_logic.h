@@ -17,6 +17,12 @@ public:
     bool isSwLimitLatched() const { return swLimitLatched; }
     bool isIgnitionTimeout() const { return ignitionTimeout; }
     bool hasDiscrepancy() const { return discrepancy; }
+    
+    float getPhaseTime() const { return purgeTimer; }
+    int getStarts() const { return 0; } // TODO: track starts
+    bool getRequested() const { return requested; }
+    int getLockouts24h() const { return lockoutTimes.size(); }
+    float getRunHours() const { return runHoursCont; }
 
     void startBurner();
     void stopBurner();

@@ -7,6 +7,11 @@
 #include "hal.h"
 #include "config.h"
 
+#include "state_json.h"
+#include <ArduinoJson.h>
+#include <fstream>
+#include <sstream>
+
 class HALMockTest : public HAL {
 public:
     unsigned long timeMs = 0;
@@ -732,6 +737,59 @@ void test_plant_nivel_normaliza_rearme() {
     TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b1.getPhase());
 }
 
+void check_json_types(JsonObject expected, JsonObject actual, const std::string& path) {
+    for (JsonPair kv : expected) {
+        TEST_ASSERT_TRUE_MESSAGE(actual.containsKey(kv.key()), (path + "." + kv.key().c_str() + " missing").c_str());
+        JsonVariant vExpected = kv.value();
+        JsonVariant vActual = actual[kv.key()];
+        
+        if (vExpected.is<JsonObject>()) {
+            TEST_ASSERT_TRUE_MESSAGE(vActual.is<JsonObject>(), (path + "." + kv.key().c_str() + " should be object").c_str());
+            check_json_types(vExpected.as<JsonObject>(), vActual.as<JsonObject>(), path + "." + kv.key().c_str());
+        } else if (vExpected.is<JsonArray>()) {
+            TEST_ASSERT_TRUE_MESSAGE(vActual.is<JsonArray>(), (path + "." + kv.key().c_str() + " should be array").c_str());
+            if (vExpected.as<JsonArray>().size() > 0 && vExpected.as<JsonArray>()[0].is<JsonObject>()) {
+                if (vActual.as<JsonArray>().size() > 0) {
+                     check_json_types(vExpected.as<JsonArray>()[0].as<JsonObject>(), vActual.as<JsonArray>()[0].as<JsonObject>(), path + "." + kv.key().c_str() + "[0]");
+                }
+            }
+        } else if (vExpected.is<bool>()) {
+            TEST_ASSERT_TRUE_MESSAGE(vActual.is<bool>(), (path + "." + kv.key().c_str() + " should be bool").c_str());
+        } else if (vExpected.is<int>() || vExpected.is<float>()) {
+            TEST_ASSERT_TRUE_MESSAGE(vActual.is<int>() || vActual.is<float>(), (path + "." + kv.key().c_str() + " should be number").c_str());
+        } else if (vExpected.is<const char*>()) {
+            TEST_ASSERT_TRUE_MESSAGE(vActual.is<const char*>(), (path + "." + kv.key().c_str() + " should be string").c_str());
+        }
+    }
+}
+
+void test_state_json_contrato() {
+    BurnerLogic b1, b2; PumpLogic p1, p2; TankLogic tx;
+    HALMockTest hal;
+    AlarmEngine alarms(&hal);
+    HeaterInputs in1 = get_default_inputs();
+    in1.novus.commOk = true;
+    in1.temp.quality = Quality::OK;
+    in1.press.quality = Quality::OK;
+    HeaterInputs in2 = get_default_inputs();
+    in2.novus.commOk = true;
+    in2.temp.quality = Quality::OK;
+    in2.press.quality = Quality::OK;
+    std::string jsonStr = generateStateJson(1000, true, b1, p1, in1, b2, p2, in2, tx, alarms, hal);
+    
+    JsonDocument genDoc;
+    deserializeJson(genDoc, jsonStr);
+    
+    std::ifstream t("../docs/protocolo/state.exemplo.json");
+    TEST_ASSERT_TRUE_MESSAGE(t.is_open(), "Could not open state.exemplo.json");
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    JsonDocument exDoc;
+    deserializeJson(exDoc, buffer.str());
+    
+    check_json_types(exDoc.as<JsonObject>(), genDoc.as<JsonObject>(), "root");
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_partida_normal);
@@ -776,5 +834,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_plant_bomba_pos_circulacao);
     RUN_TEST(test_plant_nivel_baixo_pressao_ll_bomba_desliga_na_hora);
     RUN_TEST(test_plant_nivel_normaliza_rearme);
+    RUN_TEST(test_state_json_contrato);
     return UNITY_END();
 }

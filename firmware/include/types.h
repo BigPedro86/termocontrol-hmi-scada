@@ -6,6 +6,7 @@
 enum class BurnerPhase {
     OFF,
     WAIT_PUMP,
+    STANDBY,
     PURGE,
     RUNNING,
     POST_PURGE,
@@ -79,6 +80,10 @@ struct TankState {
     bool pumpFb;
     bool isAuto;
     bool isLatched;
+    bool lowLevelLatched;
+    bool timeoutLatched;
+    bool pumpFault;
+    int startsLastHour;
 };
 
 struct TankInputs {
