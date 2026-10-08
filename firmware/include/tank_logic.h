@@ -13,6 +13,7 @@ public:
     void update(const TankInputs& in, float dt, AlarmEngine* alarms);
 
     bool isLowLevel() const { return lowLevelLatched; }
+    bool isLevelNormal() const { return currentLevelNormal; }
     TankState getState() const;
 
     void resetCommand();
@@ -24,6 +25,7 @@ private:
     bool pumpCmd;
     bool lowLevelLatched;
     bool timeoutLatched;
+    bool currentLevelNormal;
     
     float lowLevelTimer;
     float pumpOffTimer;

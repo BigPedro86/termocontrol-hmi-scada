@@ -790,9 +790,65 @@ void test_state_json_contrato() {
     check_json_types(exDoc.as<JsonObject>(), genDoc.as<JsonObject>(), "root");
 }
 
+#include "mcp_filter.h"
+
+void test_filtro_mcp() {
+    MCPFilter f(40);
+    uint32_t now = 0;
+    
+    // Nível alto contínuo = INATIVO (false)
+    f.updateRaw(0xFFFF, now);
+    now += 5;
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now));
+    
+    // Nível baixo (0) lido -> ATIVO (true)
+    f.updateRaw(0xFFFE, now); // Pino 0 em 0
+    now += 5;
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now));
+    
+    // Pulsando a 100 Hz = período 10ms (10ms baixo, 10ms alto)
+    // T = 0ms: BAIXO
+    now = 100;
+    f.updateRaw(0xFFFE, now);
+    
+    // T = 5ms: BAIXO
+    now = 105;
+    f.updateRaw(0xFFFE, now);
+    
+    // T = 10ms: ALTO
+    now = 110;
+    f.updateRaw(0xFFFF, now);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 105. 110-105 = 5ms <= 40ms. Ativo!
+    
+    // T = 15ms: ALTO
+    now = 115;
+    f.updateRaw(0xFFFF, now);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 105. 115-105 = 10ms <= 40ms. Ativo!
+    
+    // T = 20ms: BAIXO (fecha ciclo 100Hz)
+    now = 120;
+    f.updateRaw(0xFFFE, now);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow atualizado para 120. Ativo!
+    
+    // Fio rompido (alto contínuo)
+    now = 130;
+    f.updateRaw(0xFFFF, now); // ALTO
+    
+    // Em 160 (160 - 120 = 40)
+    now = 160;
+    f.updateRaw(0xFFFF, now);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // Ainda ativo (<= 40)
+    
+    // Em 161
+    now = 161;
+    f.updateRaw(0xFFFF, now);
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now)); // Inativo (> 40)
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_partida_normal);
+    RUN_TEST(test_filtro_mcp);
     RUN_TEST(test_off_qualquer_fase);
     RUN_TEST(test_bomba_sem_retorno);
     RUN_TEST(test_sensor_pt100_em_falha);

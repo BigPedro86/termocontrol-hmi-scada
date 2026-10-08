@@ -131,6 +131,9 @@ void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
     if (inputs.tankLowLevel) {
         blockReasons.push_back("TANK_LOW_LEVEL");
     }
+    if (inputs.ioModuleFault) {
+        blockReasons.push_back("IO_MODULE_FAULT");
+    }
     if (!inputs.chainOk) {
         blockReasons.push_back("SAFETY_CHAIN_OPEN");
     }

@@ -3,11 +3,13 @@
 
 TankLogic::TankLogic() 
     : isAuto(true), pumpCmd(false), lowLevelLatched(false), timeoutLatched(false),
+      currentLevelNormal(true),
       lowLevelTimer(0.0f), pumpOffTimer(30.0f), pumpOnTimer(0.0f), fbTimer(0.0f), 
       timeSinceBoot(0.0f), lastPumpCmd(false) {}
 
 void TankLogic::update(const TankInputs& in, float dt, AlarmEngine* alarms) {
     timeSinceBoot += dt;
+    currentLevelNormal = in.levelNormal;
 
     // Nível Baixo (com atraso de 2s)
     if (!in.levelNormal) {

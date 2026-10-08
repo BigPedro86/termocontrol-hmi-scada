@@ -64,6 +64,13 @@ void AlarmEngine::process(int heaterIndex, float temp, float press, bool tempFau
     updateAlarm(prefix + "LFL_LOCKOUT", "Bloqueio do programador de chama", 'C', lflLockout, false); // Rearme é no hardware
     updateAlarm(prefix + "PUMP_FAULT", "Falha no retorno da bomba", 'C', pumpFault, true);
     updateAlarm(prefix + "NOVUS_COMM_LOST", "Perda de comunicação com Modbus", 'H', novusCommLost, false);
+    
+    // Alarme crítico global
+    if (hal->isIoFault()) {
+        updateAlarm("SYS_IO_MODULE_FAULT", "Falha de comunicação com módulo de E/S", 'C', true, false);
+    } else {
+        updateAlarm("SYS_IO_MODULE_FAULT", "Falha de comunicação com módulo de E/S", 'C', false, false);
+    }
 
     // Sequência Crítica
     updateAlarm(prefix + "START_FAIL", "Falha na partida (Sem chama em 60s)", 'C', noFlame60s, true);
