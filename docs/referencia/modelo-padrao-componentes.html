@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Padrão visual</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#16191D;color:#E7EAEE}
+a{color:#8AB4FF}a:hover{color:#B3CEFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; box-sizing: border-box; padding: 48px; background: #16191D; color: #E7EAEE; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 20px; display: flex; flex-direction: column; gap: 24px; overflow: hidden">
+<div style="display: flex; align-items: baseline; gap: 16px">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 700">Padrão visual da IHM</h1>
+<span style="color: #9AA3AD">Referência de cores, textos e componentes · detalhes em docs/PADRAO_VISUAL.md</span>
+</div>
+
+<div style="flex-grow: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+
+<!-- CORES -->
+<section style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 8px 0; font-size: 16px; line-height: 24px; font-weight: 600">Cores</h2>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #16191D; border: 1px solid #363C44; box-sizing: border-box"></span><span style="width: 150px; font-weight: 600">bg</span><span style="width: 80px; color: #9AA3AD; font-variant-numeric: tabular-nums">#16191D</span><span style="color: #9AA3AD">Fundo da aplicação</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #1F2328; border: 1px solid #363C44; box-sizing: border-box"></span><span style="width: 150px; font-weight: 600">surface</span><span style="width: 80px; color: #9AA3AD">#1F2328</span><span style="color: #9AA3AD">Cards e painéis</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #282D33"></span><span style="width: 150px; font-weight: 600">surface-2</span><span style="width: 80px; color: #9AA3AD">#282D33</span><span style="color: #9AA3AD">Campos, trilhos, desabilitado</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #363C44"></span><span style="width: 150px; font-weight: 600">border</span><span style="width: 80px; color: #9AA3AD">#363C44</span><span style="color: #9AA3AD">Bordas de 1 px</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #E7EAEE"></span><span style="width: 150px; font-weight: 600">text · equip-on</span><span style="width: 80px; color: #9AA3AD">#E7EAEE</span><span style="color: #9AA3AD">Texto, valores, equipamento ligado</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #9AA3AD"></span><span style="width: 150px; font-weight: 600">text-muted</span><span style="width: 80px; color: #9AA3AD">#9AA3AD</span><span style="color: #9AA3AD">Rótulos, unidades, "SEM DADOS"</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #6B7480"></span><span style="width: 150px; font-weight: 600">text-dim</span><span style="width: 80px; color: #9AA3AD">#6B7480</span><span style="color: #9AA3AD">Só botão desabilitado</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #4A515A"></span><span style="width: 150px; font-weight: 600">equip-off</span><span style="width: 80px; color: #9AA3AD">#4A515A</span><span style="color: #9AA3AD">Equipamento parado, tubo sem fluxo</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #F0616A"></span><span style="width: 150px; font-weight: 600">alarm-crit</span><span style="width: 80px; color: #9AA3AD">#F0616A</span><span style="color: #9AA3AD">Contorno e texto de alarme crítico</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #B8322F"></span><span style="width: 150px; font-weight: 600">alarm-crit-fill</span><span style="width: 80px; color: #9AA3AD">#B8322F</span><span style="color: #9AA3AD">Fundo crítico com texto branco</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #F5A524"></span><span style="width: 150px; font-weight: 600">alarm-warn</span><span style="width: 80px; color: #9AA3AD">#F5A524</span><span style="color: #9AA3AD">Aviso H/L (texto escuro por cima)</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #C93C3C"></span><span style="width: 150px; font-weight: 600">stop</span><span style="width: 80px; color: #9AA3AD">#C93C3C</span><span style="color: #9AA3AD">Botões de PARADA</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #2F6FDB"></span><span style="width: 150px; font-weight: 600">action · action-fill</span><span style="width: 80px; color: #9AA3AD">#3B82F6</span><span style="color: #9AA3AD">Setpoint, foco · botão #2F6FDB</span></div>
+<div style="display: flex; align-items: center; gap: 12px; height: 40px"><span style="width: 32px; height: 32px; border-radius: 4px; background: #FF8A3D"></span><span style="width: 150px; font-weight: 600">flame</span><span style="width: 80px; color: #9AA3AD">#FF8A3D</span><span style="color: #9AA3AD">Só o ícone da chama (Queimando)</span></div>
+<div style="margin-top: 8px; padding: 12px; border-radius: 4px; background: #282D33; color: #C9CED6">Vermelho e amarelo nunca são decorativos: se aparecem, existe alarme. Normal é cinza.</div>
+</section>
+
+<!-- TIPOGRAFIA -->
+<section style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Textos · Inter (instalada no projeto)</h2>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span style="font-size: 20px; line-height: 28px; font-weight: 700">Aquecedor 01</span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">title-page · 20/28 · 700 · um por tela</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span style="font-size: 16px; line-height: 24px; font-weight: 600">Sequência do queimador</span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">title-card · 16/24 · 600</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span style="display: flex; align-items: baseline; gap: 4px"><span style="font-size: 28px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums">72,4</span><span style="color: #9AA3AD">°C</span></span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">value · 28/32 · 700 · números tabulares · unidade em body cinza</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">Ligada · confirmada</span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">value-sm · 16/20 · 600</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span>Parada comandada pelo operador</span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">body · 14/20 · 400</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; border-bottom: 1px solid #282D33"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">TEMPERATURA (PT100)</span><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">label · 12/16 · 600 · CAIXA ALTA · 0,04em · mínimo absoluto</span></div>
+<h2 style="margin: 8px 0 0 0; font-size: 16px; line-height: 24px; font-weight: 600">Números</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; font-variant-numeric: tabular-nums">
+<span style="color: #9AA3AD">Temperatura · 1 casa</span><span style="font-weight: 600">72,4 °C</span>
+<span style="color: #9AA3AD">Pressão · 2 casas</span><span style="font-weight: 600">2,35 bar</span>
+<span style="color: #9AA3AD">Modulação · inteiro</span><span style="font-weight: 600">46 %</span>
+<span style="color: #9AA3AD">GLP · inteiro, milhar</span><span style="font-weight: 600">3.500 kg</span>
+<span style="color: #9AA3AD">Contagens</span><span style="font-weight: 600">3</span>
+<span style="color: #9AA3AD">Data e hora</span><span style="font-weight: 600">30/09/2026 14:05:12</span>
+</div>
+</section>
+
+<!-- COMPONENTES -->
+<section style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Componentes</h2>
+
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">VALOR · 4 ESTADOS DE QUALIDADE</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">OK</span><span style="display: flex; align-items: baseline; gap: 4px"><span style="font-size: 28px; line-height: 32px; font-weight: 700">2,35</span><span style="color: #9AA3AD">bar</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">FAULT</span><span style="height: 32px; align-self: flex-start; display: flex; align-items: center; padding: 0 10px; border-radius: 4px; background: #B8322F; color: #FFFFFF; font-weight: 700; letter-spacing: 0.04em">FALHA</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">NOT_MEASURED</span><span style="height: 32px; display: flex; align-items: center; font-size: 16px; font-weight: 600; color: #9AA3AD">N/M</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">COMM_LOST</span><span style="height: 32px; align-self: flex-start; box-sizing: border-box; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; border: 1px solid #363C44; background: repeating-linear-gradient(135deg, #282D33 0 6px, #22262B 6px 12px); color: #9AA3AD; font-size: 12px; font-weight: 600; letter-spacing: 0.04em">SEM DADOS</span></div>
+</div>
+
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">ESTADO DO EQUIPAMENTO</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="height: 24px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 4px; background: #E7EAEE; color: #16191D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em"><svg width="14" height="14" viewBox="0 0 24 24" fill="#FF8A3D" stroke="#C2410C" stroke-width="1.5" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>QUEIMANDO</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #E7EAEE; color: #16191D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">LIGADO</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #C9CED6; color: #16191D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">PURGA</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #C9CED6; color: #16191D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">AGUARDANDO BOMBA</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #C9CED6; color: #16191D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">PÓS-PURGA</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #4A515A; color: #E7EAEE; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">PARADO</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #B8322F; color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">BLOQUEIO — REARME LOCAL</span>
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #B8322F; color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">FALHA</span>
+<span style="height: 24px; box-sizing: border-box; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; border: 1px solid #363C44; background: repeating-linear-gradient(135deg, #282D33 0 6px, #22262B 6px 12px); color: #9AA3AD; font-size: 12px; font-weight: 600; letter-spacing: 0.04em">SEM DADOS</span>
+</div>
+
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">BOTÕES DE COMANDO · ALTURA 48 · PARADA SEMPRE À ESQUERDA</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<button type="button" style="height: 48px; border-radius: 8px; border: 0; background: #C93C3C; color: #FFFFFF; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">PARAR</button>
+<button type="button" style="height: 48px; border-radius: 8px; border: 2px solid #3B82F6; background: #282D33; color: #E7EAEE; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">PARTIR</button>
+<div style="display: flex; flex-direction: column; gap: 4px"><button type="button" disabled style="height: 48px; border-radius: 8px; border: 1px solid #363C44; background: #282D33; color: #6B7480; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">PARTIR</button><span style="font-size: 12px; line-height: 16px; color: #9AA3AD">Cadeia de segurança aberta</span></div>
+</div>
+
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">FAIXA DE ALARMES · SEMPRE VISÍVEL</span>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 4px; display: flex; align-items: center; gap: 12px; background: #B8322F; color: #FFFFFF"><span style="height: 24px; display: flex; align-items: center; padding: 0 6px; border-radius: 4px; background: #7E1F1D; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">CRÍTICO</span><span style="font-weight: 600">AQ02 — Falha no sensor de pressão</span></div>
+<div style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 4px; display: flex; align-items: center; gap: 12px; background: #F5A524; color: #16191D"><span style="height: 24px; display: flex; align-items: center; padding: 0 6px; border-radius: 4px; background: #16191D; color: #F5A524; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">AVISO</span><span style="font-weight: 600">AQ02 — Sem comunicação com o Novus</span></div>
+<div style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 4px; border: 1px solid #363C44; display: flex; align-items: center; gap: 12px; background: #1B1E22; color: #9AA3AD">Sem alarmes ativos</div>
+</div>
+
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">COMUNICAÇÃO · SEMPRE COM TEXTO</span>
+<div style="display: flex; gap: 8px">
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #363C44; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">ESP32<span style="color: #E7EAEE">OK</span></span>
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #F5A524; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">NOVUS AQ02<span style="color: #F5A524">FALHA</span></span>
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #F0616A; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">SERVIDOR<span style="color: #F0616A">SEM COMUNICAÇÃO</span></span>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

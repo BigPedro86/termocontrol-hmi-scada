@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #16191D;
+    --surface: #1F2328;
+    --surface-2: #282D33;
+    --border: #363C44;
+    --text: #E7EAEE;
+    --text-muted: #9AA3AD;
+    --text-dim: #6B7480;
+    --equip-on: #E7EAEE;
+    --equip-off: #4A515A;
+    --alarm-crit: #F0616A;
+    --alarm-crit-fill: #B8322F;
+    --alarm-warn: #F5A524;
+    --action: #3B82F6;
+    --action-fill: #2F6FDB;
+    --nav-active: #26344A;
+    --flame: #FF8A3D;
+    --stop: #C93C3C;
+  }
+  
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Tipografia do padrão visual */
+  .label {
+    font-size: 12px;
+    line-height: 16px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .body {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+  }
+  .title-card {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
+  }
+  .title-page {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  .value {
+    font-size: 28px;
+    line-height: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .value-sm {
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Utilidade para dados faltantes */
+  .pattern-no-data {
+    background-image: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, #22262B 6px 12px);
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-dim);
+  border-radius: 999px;
+}

@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Aquecedor 01</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#16191D;color:#E7EAEE}
+a{color:#8AB4FF;text-decoration:none}a:hover{color:#B3CEFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: flex; background: #16191D; color: #E7EAEE; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 20px; overflow: hidden">
+
+<!-- MENU LATERAL -->
+<nav aria-label="Menu principal" style="width: 220px; flex-shrink: 0; background: #1B1E22; border-right: 1px solid #363C44; display: flex; flex-direction: column">
+<div style="height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #363C44; box-sizing: border-box">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8A3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+<span style="font-size: 16px; line-height: 24px; font-weight: 700">TermoControl</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 16px 8px">
+<a href="Main.dc.html" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Visão Geral</a>
+<a href="Detalhe.dc.html" aria-current="page" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; background: #26344A; color: #B3CEFF; font-weight: 600">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>Aquecedor 01</a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>Aquecedor 02<span style="margin-left: auto; width: 8px; height: 8px; border-radius: 8px; background: #F0616A" aria-label="Alarme ativo"></span></a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg>Tanque de Expansão</a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path></svg>Estoque de GLP</a>
+<div style="height: 1px; background: #363C44; margin: 8px 4px"></div>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>Alarmes<span style="margin-left: auto; min-width: 24px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; background: #B8322F; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">2</span></a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="4" y2="6"></line><line x1="3" y1="12" x2="4" y2="12"></line><line x1="3" y1="18" x2="4" y2="18"></line></svg>Eventos</a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line></svg>Mapa de E/S</a>
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: #C9CED6">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="17" x2="20" y2="17"></line><circle cx="9" cy="7" r="2" fill="#1B1E22"></circle><circle cx="15" cy="17" r="2" fill="#1B1E22"></circle></svg>Configurações</a>
+</div>
+</nav>
+
+<div style="width: 1700px; display: flex; flex-direction: column">
+
+<!-- BARRA SUPERIOR -->
+<header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 24px; display: flex; align-items: center; gap: 24px; background: #1F2328; border-bottom: 1px solid #363C44">
+<div style="display: flex; align-items: baseline; gap: 16px">
+<span style="font-size: 16px; line-height: 24px; font-weight: 600">Planta TermoControl</span>
+<span style="color: #9AA3AD; font-variant-numeric: tabular-nums">30/09/2026  14:05:12</span>
+</div>
+<div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #363C44; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">SERVIDOR<span style="color: #E7EAEE">OK</span></span>
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #363C44; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">ESP32<span style="color: #E7EAEE">OK</span></span>
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #363C44; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">NOVUS AQ01<span style="color: #E7EAEE">OK</span></span>
+<span style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid #F5A524; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">NOVUS AQ02<span style="color: #F5A524">FALHA</span></span>
+<span style="margin-left: 8px; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums">atualizado há 1 s</span>
+</div>
+<div style="width: 1px; height: 32px; background: #363C44"></div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: flex-end">
+<span style="font-weight: 600">supervisor1</span>
+<span style="font-size: 12px; line-height: 16px; color: #9AA3AD">Supervisor</span>
+</div>
+<a href="Main.dc.html" style="height: 40px; display: flex; align-items: center; padding: 0 16px; border-radius: 8px; border: 1px solid #363C44; color: #E7EAEE; font-weight: 600">Sair</a>
+</div>
+</header>
+
+<!-- FAIXA DE ALARMES -->
+<div role="alert" style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 24px; display: flex; align-items: center; gap: 16px; background: #B8322F; color: #FFFFFF">
+<span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #7E1F1D; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em">CRÍTICO</span>
+<span style="font-variant-numeric: tabular-nums; font-weight: 600">14:02:31</span>
+<span style="font-weight: 600">AQ02 — Falha no sensor de pressão</span>
+<span style="color: #FFE3E1">2 ativos · 1 não reconhecido</span>
+<div style="margin-left: auto; display: flex; gap: 8px">
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #FFB4AE; background: #7E1F1D; color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">SILENCIAR</button>
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #FFB4AE; background: #7E1F1D; color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 0.04em">RECONHECER</button>
+</div>
+</div>
+
+<main style="flex-grow: 1; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+
+<!-- Voltar + caminho -->
+<div style="height: 44px; display: flex; align-items: center; gap: 16px">
+<a href="Main.dc.html" style="height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 16px 0 12px; border-radius: 8px; border: 1px solid #363C44; background: #1F2328; color: #E7EAEE; font-weight: 600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>Visão Geral</a>
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PLANTA  ›  AQUECEDOR 01</span>
+</div>
+
+<!-- Título + contadores -->
+<div style="height: 44px; display: flex; align-items: center; gap: 12px">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 700">Aquecedor 01</h1>
+<span style="color: #9AA3AD">AQ01</span>
+<span style="height: 24px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 4px; background: #E7EAEE; color: #16191D; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em"><svg width="14" height="14" viewBox="0 0 24 24" fill="#FF8A3D" stroke="#C2410C" stroke-width="1.5" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>QUEIMANDO</span>
+<div style="margin-left: auto; display: flex; gap: 32px">
+<div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">HORAS DE QUEIMA</span><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">12,4 h</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PARTIDAS 24 H</span><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">3</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">BLOQUEIOS 24 H</span><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">0</span></div>
+</div>
+</div>
+
+<!-- GRADE -->
+<div style="height: 792px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px">
+
+<!-- COLUNA ESQUERDA -->
+<div style="grid-column: span 8; display: flex; flex-direction: column; gap: 24px; min-width: 0">
+
+<section aria-label="Sequência do queimador" style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Sequência do queimador</h2>
+<span style="margin-left: auto; font-size: 12px; line-height: 16px; color: #9AA3AD">Programador LFL1.333: sem bloqueio · rearme de bloqueio somente no local</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 28px; border-radius: 28px; background: #9AA3AD; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PARADO</span></div>
+<div style="flex-grow: 1; height: 2px; background: #9AA3AD"></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 28px; border-radius: 28px; background: #9AA3AD; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">AGUARDANDO BOMBA</span></div>
+<div style="flex-grow: 1; height: 2px; background: #9AA3AD"></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 28px; border-radius: 28px; background: #9AA3AD; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PURGA</span></div>
+<div style="flex-grow: 1; height: 2px; background: #9AA3AD"></div>
+<div style="display: flex; align-items: center; gap: 8px" aria-current="step"><span style="width: 32px; height: 32px; border-radius: 32px; background: #E7EAEE; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#FF8A3D" stroke="#C2410C" stroke-width="1.5" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg></span><span style="font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em; color: #E7EAEE">QUEIMANDO</span></div>
+<div style="flex-grow: 1; height: 2px; background: #363C44"></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 28px; box-sizing: border-box; border-radius: 28px; border: 2px solid #4A515A"></span><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #6B7480">PÓS-PURGA</span></div>
+</div>
+</section>
+
+<section aria-label="Medições" style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Medições</h2>
+<span style="margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; line-height: 16px; color: #9AA3AD">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 0px; height: 0px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #3B82F6"></span>Setpoint do Novus</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 2px; background: rgba(245,165,36,0.45)"></span>Pré-aviso H / L</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 2px; background: rgba(240,97,106,0.45)"></span>Corte HH / LL</span>
+</span>
+</div>
+
+<!-- Barra: Temperatura -->
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: baseline">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">TEMPERATURA (PT100)</span>
+<span style="margin-left: 12px; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums">Novus PV 72,1 °C · SP 75,0 °C</span>
+<span style="margin-left: auto; display: flex; align-items: baseline; gap: 4px"><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">72,4</span><span style="color: #9AA3AD">°C</span></span>
+</div>
+<div style="position: relative; height: 10px"><span style="position: absolute; left: 62.5%; top: 0px; margin-left: -6px; width: 0px; height: 0px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid #3B82F6"></span></div>
+<div style="position: relative; height: 24px; border-radius: 4px; background: #282D33; overflow: hidden">
+<div style="position: absolute; left: 70.83%; top: 0px; width: 4.17%; height: 24px; background: rgba(245,165,36,0.45)"></div>
+<div style="position: absolute; left: 75%; top: 0px; width: 25%; height: 24px; background: rgba(240,97,106,0.45)"></div>
+<div style="position: absolute; left: 0px; top: 8px; width: 60.33%; height: 8px; border-radius: 2px; background: #C9CED6"></div>
+</div>
+<div style="position: relative; height: 16px; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums">
+<span style="position: absolute; left: 0px">0</span>
+<span style="position: absolute; left: 70.83%; margin-left: -40px">H 85</span>
+<span style="position: absolute; left: 75%; margin-left: 4px">HH 90 (limite)</span>
+<span style="position: absolute; right: 0px">120 °C</span>
+</div>
+</div>
+
+<!-- Barra: Pressão -->
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: baseline">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PRESSÃO DE ÁGUA</span>
+<span style="margin-left: auto; display: flex; align-items: baseline; gap: 4px"><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">2,35</span><span style="color: #9AA3AD">bar</span></span>
+</div>
+<div style="height: 10px"></div>
+<div style="position: relative; height: 24px; border-radius: 4px; background: #282D33; overflow: hidden">
+<div style="position: absolute; left: 0px; top: 0px; width: 14.29%; height: 24px; background: rgba(240,97,106,0.45)"></div>
+<div style="position: absolute; left: 14.29%; top: 0px; width: 7.14%; height: 24px; background: rgba(245,165,36,0.45)"></div>
+<div style="position: absolute; left: 78.57%; top: 0px; width: 7.14%; height: 24px; background: rgba(245,165,36,0.45)"></div>
+<div style="position: absolute; left: 85.71%; top: 0px; width: 14.29%; height: 24px; background: rgba(240,97,106,0.45)"></div>
+<div style="position: absolute; left: 0px; top: 8px; width: 33.57%; height: 8px; border-radius: 2px; background: #C9CED6"></div>
+</div>
+<div style="position: relative; height: 16px; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums">
+<span style="position: absolute; left: 0px">0</span>
+<span style="position: absolute; left: 14.29%; margin-left: -44px">LL 1,0</span>
+<span style="position: absolute; left: 21.43%; margin-left: 4px">L 1,5</span>
+<span style="position: absolute; left: 78.57%; margin-left: -40px">H 5,5</span>
+<span style="position: absolute; left: 85.71%; margin-left: 4px">HH 6,0</span>
+<span style="position: absolute; right: 0px">7 bar</span>
+</div>
+</div>
+
+<!-- Barra: Modulação -->
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: baseline">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">MODULAÇÃO (NOVUS MV)</span>
+<span style="margin-left: 12px; font-size: 12px; line-height: 16px; color: #9AA3AD">Automático</span>
+<span style="margin-left: auto; display: flex; align-items: baseline; gap: 4px"><span style="font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums">46</span><span style="color: #9AA3AD">%</span></span>
+</div>
+<div style="height: 10px"></div>
+<div style="position: relative; height: 24px; border-radius: 4px; background: #282D33; overflow: hidden">
+<div style="position: absolute; left: 0px; top: 8px; width: 46%; height: 8px; border-radius: 2px; background: #C9CED6"></div>
+</div>
+<div style="position: relative; height: 16px; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums">
+<span style="position: absolute; left: 0px">0</span>
+<span style="position: absolute; right: 0px">100 %</span>
+</div>
+</div>
+</section>
+
+<section aria-label="Tendência" style="flex-grow: 1; box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 16px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Tendência</h2>
+<span style="font-size: 12px; line-height: 16px; color: #6B7480">exemplo de layout — no sistema, só o histórico real</span>
+<div role="group" aria-label="Período" style="margin-left: auto; display: flex; border: 1px solid #363C44; border-radius: 8px; overflow: hidden">
+<button type="button" aria-pressed="true" style="height: 36px; padding: 0 16px; border: 0; background: #26344A; color: #B3CEFF; font-size: 14px; font-weight: 600">1 h</button>
+<button type="button" aria-pressed="false" style="height: 36px; padding: 0 16px; border: 0; border-left: 1px solid #363C44; background: #1F2328; color: #C9CED6; font-size: 14px">8 h</button>
+<button type="button" aria-pressed="false" style="height: 36px; padding: 0 16px; border: 0; border-left: 1px solid #363C44; background: #1F2328; color: #C9CED6; font-size: 14px">24 h</button>
+</div>
+</div>
+<div style="display: flex; gap: 16px; font-size: 12px; line-height: 16px; color: #9AA3AD">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 2px; background: #E7EAEE"></span>Temperatura PT100</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 0px; border-top: 2px dashed #3B82F6"></span>Setpoint do Novus</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 0px; border-top: 2px dashed #F0616A"></span>Limite 90 °C</span>
+</div>
+<div style="display: flex; gap: 8px; height: 100px">
+<div style="width: 36px; height: 100px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; line-height: 16px; color: #9AA3AD; text-align: right; font-variant-numeric: tabular-nums"><span>100</span><span>70</span><span>40</span></div>
+<svg width="1001" height="100" viewBox="0 0 1001 100" aria-label="Gráfico de temperatura da última hora" style="background: #1B1E22; border-radius: 4px">
+<line x1="0" y1="17" x2="1001" y2="17" stroke="#F0616A" stroke-width="2" stroke-dasharray="6 6"></line>
+<line x1="0" y1="41" x2="1001" y2="41" stroke="#3B82F6" stroke-width="2" stroke-dasharray="6 6"></line>
+<polyline fill="none" stroke="#E7EAEE" stroke-width="2" points="0,73 60,67 120,60 180,55 240,51 300,47 360,45 420,45 480,46 540,48 600,47 660,45 720,44 780,45 840,46 900,47 960,45 1001,45"></polyline>
+</svg>
+</div>
+<div style="margin-left: 44px; display: flex; justify-content: space-between; font-size: 12px; line-height: 16px; color: #9AA3AD; font-variant-numeric: tabular-nums"><span>13:05</span><span>13:20</span><span>13:35</span><span>13:50</span><span>14:05</span></div>
+</section>
+</div>
+
+<!-- COLUNA DIREITA -->
+<div style="grid-column: span 4; display: flex; flex-direction: column; gap: 24px; min-width: 0">
+
+<section aria-label="Comandos" style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Comandos</h2>
+<span style="margin-left: auto; height: 24px; display: flex; align-items: center; gap: 6px"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">PERMISSÃO</span><span style="height: 24px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: #E7EAEE; color: #16191D; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em">CONCEDIDA</span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">QUEIMADOR</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<button type="button" style="height: 48px; border-radius: 8px; border: 0; background: #C93C3C; color: #FFFFFF; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">PARAR QUEIMADOR</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<button type="button" disabled aria-describedby="motivo-partir" style="height: 48px; border-radius: 8px; border: 1px solid #363C44; background: #282D33; color: #6B7480; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">PARTIR QUEIMADOR</button>
+<span id="motivo-partir" style="font-size: 12px; line-height: 16px; color: #9AA3AD">Queimador já em operação</span>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">BOMBA DE CIRCULAÇÃO</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<button type="button" style="height: 48px; border-radius: 8px; border: 0; background: #C93C3C; color: #FFFFFF; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">DESLIGAR BOMBA</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<button type="button" disabled aria-describedby="motivo-bomba" style="height: 48px; border-radius: 8px; border: 1px solid #363C44; background: #282D33; color: #6B7480; font-size: 14px; font-weight: 700; letter-spacing: 0.04em">LIGAR BOMBA</button>
+<span id="motivo-bomba" style="font-size: 12px; line-height: 16px; color: #9AA3AD">Bomba já ligada</span>
+</div>
+</div>
+</div>
+<div style="padding-top: 16px; border-top: 1px solid #363C44; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; color: #9AA3AD">RESTRIÇÕES ATIVAS</span>
+<span style="color: #C9CED6">Nenhuma restrição ativa</span>
+</div>
+</section>
+
+<section aria-label="Estado" style="box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 0px">
+<h2 style="margin: 0 0 8px 0; font-size: 16px; line-height: 24px; font-weight: 600">Estado</h2>
+<div style="height: 32px; display: flex; align-items: center; border-bottom: 1px solid #282D33"><span style="color: #9AA3AD">Cadeia de segurança</span><span style="margin-left: auto; font-weight: 600">Fechada</span></div>
+<div style="height: 32px; display: flex; align-items: center; border-bottom: 1px solid #282D33"><span style="color: #9AA3AD">Emergência</span><span style="margin-left: auto; font-weight: 600">Normal</span></div>
+<div style="height: 32px; display: flex; align-items: center; border-bottom: 1px solid #282D33"><span style="color: #9AA3AD">Programador LFL</span><span style="margin-left: auto; font-weight: 600">Sem bloqueio</span></div>
+<div style="height: 32px; display: flex; align-items: center; border-bottom: 1px solid #282D33"><span style="color: #9AA3AD">Bomba (comando / retorno)</span><span style="margin-left: auto; font-weight: 600">Ligada / Confirmada</span></div>
+<div style="height: 32px; display: flex; align-items: center; border-bottom: 1px solid #282D33"><span style="color: #9AA3AD">Novus</span><span style="margin-left: auto; font-weight: 600">Comunicação OK · Automático</span></div>
+<div style="height: 32px; display: flex; align-items: center"><span style="color: #9AA3AD">Novus PV / SP / MV</span><span style="margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums">72,1 / 75,0 °C · 46 %</span></div>
+</section>
+
+<section aria-label="Alarmes do equipamento" style="flex-grow: 1; box-sizing: border-box; padding: 24px; background: #1F2328; border: 1px solid #363C44; border-radius: 8px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Alarmes do equipamento</h2>
+<a href="#" style="margin-left: auto; font-weight: 600">Ver eventos</a>
+</div>
+<span style="color: #9AA3AD">Nenhum alarme ativo neste equipamento</span>
+</section>
+</div>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
