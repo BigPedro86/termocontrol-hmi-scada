@@ -65,8 +65,7 @@ std::string generateStateJson(unsigned long now,
             n["pv"] = nullptr; n["sp"] = nullptr; n["mv"] = nullptr;
         }
         n["auto"] = true;
-        JsonArray nAlarms = n["alarms"].to<JsonArray>();
-        nAlarms.add(false); nAlarms.add(false);
+        n["alarms"] = nullptr; // TODO: Validar bits de alarme no equipamento Novus
         n["quality"] = in.novus.quality == Quality::OK ? "OK" : "COMM_LOST";
         
         JsonObject pObj = h["pump"].to<JsonObject>();

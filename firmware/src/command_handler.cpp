@@ -18,7 +18,7 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
         if (command == "TANK_LEVEL_RESET") {
             if (role == "Supervisor" || role == "Maintenance" || role == "Admin") {
                 if (tLogic) {
-                    if (!tLogic->getState().levelNormal) {
+                    if (!tLogic->isLevelNormal()) {
                         return {false, "TANK_LEVEL_STILL_LOW"};
                     }
                     tLogic->resetCommand();

@@ -5,9 +5,10 @@
 #include <Adafruit_MCP23X17.h>
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_MAX31865.h>
-#include <ModbusMaster.h>
+#include "ModbusClientRTU.h"
 #include <Preferences.h>
 #include "io_map.h"
+#include "mcp_filter.h"
 
 class HAL_ESP32 : public HAL {
 public:
@@ -44,6 +45,7 @@ public:
     bool isNovusCommOk(int h) override;
 
     // Utils
+    bool isIoFault() override;
     unsigned long millis() override;
     void saveConfig(const std::string& key, const std::string& value) override;
     std::string loadConfig(const std::string& key, const std::string& default_val) override;
@@ -57,21 +59,24 @@ private:
     Adafruit_MAX31865* pt100[2];
     Preferences preferences;
 
+    // Filtro MCP
+    static void mcpTask(void *pvParameters);
+    MCPFilter mcpFilter;
+    uint32_t inputFilterMs;
+
     // Modbus states
     struct ModbusData {
         float pv;
         float sv;
         float mv;
-        bool a1;
-        bool a2;
         bool commOk;
+        uint32_t lastSuccessTime;
     };
     ModbusData modbusData[2];
-    ModbusMaster node1;
-    ModbusMaster node2;
+    ModbusClientRTU* MB;
     unsigned long lastModbusPoll;
+    int modbusCurrentSlave;
+    portMUX_TYPE modbusMux = portMUX_INITIALIZER_UNLOCKED;
 
-    void initHardware();
-    void preTransmission();
-    void postTransmission();
+    bool getFilteredInput(int pin);
 };

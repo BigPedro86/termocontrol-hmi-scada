@@ -52,6 +52,7 @@ public:
 
     // Tempo
     virtual unsigned long millis() = 0;
+    virtual bool isIoFault() { return false; }
 
     // NVS Storage
     virtual void saveConfig(const std::string& key, const std::string& value) = 0;

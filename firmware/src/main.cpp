@@ -87,6 +87,11 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     }
 }
 
+WiFiManager wm;
+WiFiManagerParameter* custom_server_ip;
+WiFiManagerParameter* custom_server_port;
+WiFiManagerParameter* custom_device_secret;
+
 void setup() {
     Serial.begin(115200);
     hal.begin(); // Ensures safe boot (relays off)
@@ -99,26 +104,26 @@ void setup() {
     config.serverPort = preferences.getInt("serverPort", 3000);
     config.deviceSecret = preferences.getString("deviceSecret", "").c_str();
 
-    WiFiManagerParameter custom_server_ip("server", "SCADA Server IP", config.serverIp.c_str(), 40);
+    custom_server_ip = new WiFiManagerParameter("server", "SCADA Server IP", config.serverIp.c_str(), 40);
     char port_str[6];
     itoa(config.serverPort, port_str, 10);
-    WiFiManagerParameter custom_server_port("port", "SCADA Server Port", port_str, 6);
-    WiFiManagerParameter custom_device_secret("secret", "Device Secret", config.deviceSecret.c_str(), 64);
+    custom_server_port = new WiFiManagerParameter("port", "SCADA Server Port", port_str, 6);
+    custom_device_secret = new WiFiManagerParameter("secret", "Device Secret", config.deviceSecret.c_str(), 64);
 
-    WiFiManager wm;
-    wm.addParameter(&custom_server_ip);
-    wm.addParameter(&custom_server_port);
-    wm.addParameter(&custom_device_secret);
+    wm.addParameter(custom_server_ip);
+    wm.addParameter(custom_server_port);
+    wm.addParameter(custom_device_secret);
 
     wm.setSaveParamsCallback([&]() {
-        config.serverIp = custom_server_ip.getValue();
-        config.serverPort = atoi(custom_server_port.getValue());
-        config.deviceSecret = custom_device_secret.getValue();
+        config.serverIp = custom_server_ip->getValue();
+        config.serverPort = atoi(custom_server_port->getValue());
+        config.deviceSecret = custom_device_secret->getValue();
         preferences.putString("serverIp", config.serverIp.c_str());
         preferences.putInt("serverPort", config.serverPort);
         preferences.putString("deviceSecret", config.deviceSecret.c_str());
     });
 
+    wm.setConfigPortalBlocking(false);
     wm.autoConnect("TermoControl_AP");
     
     std::string url = "/?device=true&secret=" + config.deviceSecret;
@@ -130,6 +135,7 @@ void setup() {
 
 void loop() {
     esp_task_wdt_reset();
+    wm.process();
     webSocket.loop();
     hal.pollModbus();
     
@@ -164,6 +170,7 @@ void loop() {
     in1.novus.commOk = hal.isNovusCommOk(0);
     in1.novus.quality = in1.novus.commOk ? Quality::OK : Quality::COMM_LOST;
     in1.swLimit = config.tempSoftwareLimit;
+    in1.ioModuleFault = hal.isIoFault();
     
     // Same for AQ2
     HeaterInputs in2 = in1;

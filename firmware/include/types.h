@@ -71,6 +71,7 @@ struct HeaterInputs {
     bool swLimitResetCmd;
     uint32_t uptime_s;
     bool tankLowLevel; // Adicionado para intertravamento
+    bool ioModuleFault;
 };
 
 struct TankState {
