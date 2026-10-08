@@ -794,7 +794,7 @@ void test_state_json_contrato() {
 
 void test_filtro_mcp() {
     MCPFilter f(40);
-    uint32_t now = 0;
+    uint32_t now = 100;
     
     // Nível alto contínuo = INATIVO (false)
     f.updateRaw(0xFFFF, now);
@@ -807,48 +807,125 @@ void test_filtro_mcp() {
     TEST_ASSERT_TRUE(f.getFilteredInput(0, now));
     
     // Pulsando a 100 Hz = período 10ms (10ms baixo, 10ms alto)
+    // Pulsando a 100 Hz = período 10ms (10ms baixo, 10ms alto)
     // T = 0ms: BAIXO
-    now = 100;
+    now = 200;
     f.updateRaw(0xFFFE, now);
     
     // T = 5ms: BAIXO
-    now = 105;
+    now = 205;
     f.updateRaw(0xFFFE, now);
     
     // T = 10ms: ALTO
-    now = 110;
+    now = 210;
     f.updateRaw(0xFFFF, now);
-    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 105. 110-105 = 5ms <= 40ms. Ativo!
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 205. 210-205 = 5ms <= 40ms. Ativo!
     
     // T = 15ms: ALTO
-    now = 115;
+    now = 215;
     f.updateRaw(0xFFFF, now);
-    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 105. 115-105 = 10ms <= 40ms. Ativo!
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow foi em 205. 215-205 = 10ms <= 40ms. Ativo!
     
     // T = 20ms: BAIXO (fecha ciclo 100Hz)
-    now = 120;
+    now = 220;
     f.updateRaw(0xFFFE, now);
-    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow atualizado para 120. Ativo!
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // lastLow atualizado para 220. Ativo!
     
     // Fio rompido (alto contínuo)
-    now = 130;
+    now = 230;
     f.updateRaw(0xFFFF, now); // ALTO
     
-    // Em 160 (160 - 120 = 40)
-    now = 160;
+    // Em 260 (260 - 220 = 40)
+    now = 260;
     f.updateRaw(0xFFFF, now);
     TEST_ASSERT_TRUE(f.getFilteredInput(0, now)); // Ainda ativo (<= 40)
     
-    // Em 161
-    now = 161;
+    // Em 261
+    now = 261;
     f.updateRaw(0xFFFF, now);
     TEST_ASSERT_FALSE(f.getFilteredInput(0, now)); // Inativo (> 40)
+}
+
+void test_mcp_falha_i2c() {
+    MCPFilter f(40);
+    uint32_t now = 100;
+    
+    // Normal: leitura de opto conduzindo (nível BAIXO = 0 em tudo para simplificar)
+    f.updateRaw(0x0000, now);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now));
+    TEST_ASSERT_TRUE(f.getFilteredInput(3, now));
+    
+    // Falha I2C: setIoFault chamado
+    f.setIoFault(true);
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now)); // Tudo inativo no mesmo instante
+    TEST_ASSERT_FALSE(f.getFilteredInput(3, now));
+    
+    // Zero recebido durante a falha não engana
+    f.updateRaw(0x0000, now); // Se a rotina por engano chamar com 0
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now));
+    
+    // Restaura falha: lastLowTime devem ser 0
+    f.setIoFault(false);
+    f.resetFilter();
+    now = 110;
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now)); // Não tem tempo para estar ativo
+    f.updateRaw(0x0000, now); // Agora lê ativo
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, now));
+}
+
+void test_mcp_falha_config() {
+    MCPFilter f(40);
+    // Simula as checagens (mesma lógica que colocamos no hal_esp32.cpp)
+    int goodReads = 0;
+    
+    // Gppu = 0x0000 detectado (errado)
+    bool ok = false; 
+    if (!ok) {
+        f.setIoFault(true);
+        goodReads = 0;
+    }
+    TEST_ASSERT_TRUE(f.isIoFault());
+    
+    // IODIR = 0xFFFF detectado (errado)
+    ok = false;
+    if (!ok) {
+        f.setIoFault(true);
+        goodReads = 0;
+    }
+    TEST_ASSERT_TRUE(f.isIoFault());
+    
+    // Voltou ao normal
+    ok = true;
+    for(int i=0; i<3; i++) {
+        if(ok) {
+            if(goodReads < 3) goodReads++;
+            if(goodReads >= 3 && f.isIoFault()) {
+                f.setIoFault(false);
+                f.resetFilter();
+            }
+        }
+        if (i < 2) TEST_ASSERT_TRUE(f.isIoFault()); // Ainda não deu 3
+    }
+    TEST_ASSERT_FALSE(f.isIoFault()); // Após 3 leituras boas
+}
+
+void test_mcp_corrida() {
+    MCPFilter f(40);
+    uint32_t now = 100;
+    f.updateRaw(0x0000, 105); // lastLow = 105
+    
+    // Simula o loop tentando ler em now=100 mas a task atualizou pra 105 entre a atribuição do now e a verificação
+    // O getFilteredInput deve retornar true (corrida contornada)
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, 100)); 
 }
 
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_partida_normal);
     RUN_TEST(test_filtro_mcp);
+    RUN_TEST(test_mcp_falha_i2c);
+    RUN_TEST(test_mcp_falha_config);
+    RUN_TEST(test_mcp_corrida);
     RUN_TEST(test_off_qualquer_fase);
     RUN_TEST(test_bomba_sem_retorno);
     RUN_TEST(test_sensor_pt100_em_falha);

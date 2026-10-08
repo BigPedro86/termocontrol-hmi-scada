@@ -29,7 +29,7 @@
         "sp": 60.0,
         "mv": 0.0,
         "auto": true,
-        "alarms": [false, false],
+        "alarms": null,
         "quality": "OK"
       },
       "pump": {

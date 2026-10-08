@@ -3,21 +3,35 @@
 #include "config.h"
 #include "types.h"
 
-// Prevent pins 7 and 15 as inputs
-static_assert(MCP_AQ01_LOCKOUT != 7 && MCP_AQ01_LOCKOUT != 15, "Pino reservado");
-static_assert(MCP_AQ01_GAS_VALVES != 7 && MCP_AQ01_GAS_VALVES != 15, "Pino reservado");
-static_assert(MCP_AQ01_FAN != 7 && MCP_AQ01_FAN != 15, "Pino reservado");
-static_assert(MCP_AQ01_CHAIN_OK != 7 && MCP_AQ01_CHAIN_OK != 15, "Pino reservado");
-static_assert(MCP_AQ01_PUMP_FB != 7 && MCP_AQ01_PUMP_FB != 15, "Pino reservado");
-static_assert(MCP_AQ02_LOCKOUT != 7 && MCP_AQ02_LOCKOUT != 15, "Pino reservado");
-static_assert(MCP_AQ02_GAS_VALVES != 7 && MCP_AQ02_GAS_VALVES != 15, "Pino reservado");
-static_assert(MCP_AQ02_FAN != 7 && MCP_AQ02_FAN != 15, "Pino reservado");
-static_assert(MCP_AQ02_CHAIN_OK != 7 && MCP_AQ02_CHAIN_OK != 15, "Pino reservado");
-static_assert(MCP_AQ02_PUMP_FB != 7 && MCP_AQ02_PUMP_FB != 15, "Pino reservado");
-static_assert(MCP_ESTOP_OK != 7 && MCP_ESTOP_OK != 15, "Pino reservado");
-static_assert(MCP_TX01_LEVEL_SW != 7 && MCP_TX01_LEVEL_SW != 15, "Pino reservado");
-static_assert(MCP_TX01_PRESS_SW != 7 && MCP_TX01_PRESS_SW != 15, "Pino reservado");
-static_assert(MCP_TX01_PUMP_FB != 7 && MCP_TX01_PUMP_FB != 15, "Pino reservado");
+#define CHK_PIN(p) static_assert((p) != 7 && (p) != 15, "Pinos 7 e 15 reservados e nao podem ser entradas");
+CHK_PIN(MCP_AQ01_LOCKOUT)
+CHK_PIN(MCP_AQ01_GAS_VALVES)
+CHK_PIN(MCP_AQ01_FAN)
+CHK_PIN(MCP_AQ01_CHAIN_OK)
+CHK_PIN(MCP_AQ01_PUMP_FB)
+CHK_PIN(MCP_AQ02_LOCKOUT)
+CHK_PIN(MCP_AQ02_GAS_VALVES)
+CHK_PIN(MCP_AQ02_FAN)
+CHK_PIN(MCP_AQ02_CHAIN_OK)
+CHK_PIN(MCP_AQ02_PUMP_FB)
+CHK_PIN(MCP_ESTOP_OK)
+CHK_PIN(MCP_TX01_LEVEL_SW)
+CHK_PIN(MCP_TX01_PRESS_SW)
+CHK_PIN(MCP_TX01_PUMP_FB)
+
+static_assert(MCP_BUZZER == 15, "BUZZER deve estar na porta 15");
+
+// Calcula a mascara de configuração esperada
+#define MASK_PIN(p) (1 << (p))
+constexpr uint16_t EXPECTED_IODIR = 
+    MASK_PIN(MCP_AQ01_LOCKOUT) | MASK_PIN(MCP_AQ01_GAS_VALVES) | MASK_PIN(MCP_AQ01_FAN) | 
+    MASK_PIN(MCP_AQ01_CHAIN_OK) | MASK_PIN(MCP_AQ01_PUMP_FB) | 
+    MASK_PIN(MCP_AQ02_LOCKOUT) | MASK_PIN(MCP_AQ02_GAS_VALVES) | MASK_PIN(MCP_AQ02_FAN) | 
+    MASK_PIN(MCP_AQ02_CHAIN_OK) | MASK_PIN(MCP_AQ02_PUMP_FB) | 
+    MASK_PIN(MCP_ESTOP_OK) | MASK_PIN(MCP_TX01_LEVEL_SW) | 
+    MASK_PIN(MCP_TX01_PRESS_SW) | MASK_PIN(MCP_TX01_PUMP_FB);
+
+constexpr uint16_t EXPECTED_GPPU = EXPECTED_IODIR; // Mesma máscara, pull-up em todas entradas
 
 HardwareSerial RS485Serial(2);
 
@@ -36,64 +50,64 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
     uint32_t lastCheck = 0;
     int goodReads = 0;
 
+    auto readReg16 = [](uint8_t reg, bool& ok) -> uint16_t {
+        Wire.beginTransmission(0x20);
+        Wire.write(reg);
+        if (Wire.endTransmission() != 0) { ok = false; return 0; }
+        Wire.requestFrom(0x20, 2);
+        if (Wire.available() == 2) {
+            uint8_t l = Wire.read();
+            uint8_t h = Wire.read();
+            return (h << 8) | l;
+        }
+        ok = false;
+        return 0;
+    };
+
     while(true) {
         uint32_t now = hal->millis();
-        
-        bool ok = true;
-        Wire.beginTransmission(0x20);
-        if (Wire.endTransmission() != 0) {
-            ok = false;
-        } else {
-            uint16_t vals = hal->mcp.readGPIOAB();
+        bool cycleOk = true;
+
+        // Leitura GPIO
+        uint16_t vals = readReg16(0x12, cycleOk); // 0x12 é GPIOA no bank 0
+
+        if (cycleOk) {
             hal->mcpFilter.updateRaw(vals, now);
+        } else {
+            hal->mcpFilter.setIoFault(true);
+            goodReads = 0;
+            // Se falhou, nao continua pro check de 1s
+        }
+
+        if (cycleOk && now - lastCheck >= 1000) {
+            lastCheck = now;
             
-            // Verificação de segurança a cada 1s
-            if (now - lastCheck >= 1000) {
-                lastCheck = now;
-                
-                auto readReg16 = [](uint8_t reg) -> uint16_t {
-                    Wire.beginTransmission(0x20);
-                    Wire.write(reg);
-                    if (Wire.endTransmission() != 0) return 0;
-                    Wire.requestFrom(0x20, 2);
-                    if (Wire.available() == 2) {
-                        uint8_t l = Wire.read();
-                        uint8_t h = Wire.read();
-                        return (h << 8) | l;
-                    }
-                    return 0;
-                };
+            bool configOk = true;
+            uint16_t iodir = readReg16(0x00, configOk); // IODIRA
+            uint16_t gppu  = readReg16(0x0C, configOk); // GPPUA
 
-                uint16_t iodir = readReg16(0x00); // IODIRA (0x00) e IODIRB (0x01) consecutivos
-                uint16_t gppu  = readReg16(0x0C); // GPPUA (0x0C) e GPPUB (0x0D) consecutivos
+            if (!configOk || iodir != EXPECTED_IODIR || gppu != EXPECTED_GPPU) {
+                hal->mcpFilter.setIoFault(true);
+                goodReads = 0;
 
-                // Esperado: pinos de entrada com IODIR=1 e GPPU=1. Pinos 7 e 15 são saídas.
-                // Mas simplificando, esperamos que as entradas tenham pull-up (gppu != 0).
-                if (gppu == 0 || iodir == 0) {
-                    ok = false;
-                    // Tenta reconfigurar
-                    hal->mcp.begin_I2C();
-                    for(int i=0; i<16; i++) {
-                        if (i == MCP_BUZZER || i == 7) {
-                            hal->mcp.pinMode(i, OUTPUT);
-                            hal->mcp.digitalWrite(i, LOW);
-                        } else {
-                            hal->mcp.pinMode(i, INPUT_PULLUP);
-                        }
+                // Tenta reconfigurar
+                hal->mcp.begin_I2C();
+                for(int i=0; i<16; i++) {
+                    if (i == MCP_BUZZER || i == 7) {
+                        hal->mcp.pinMode(i, OUTPUT);
+                        hal->mcp.digitalWrite(i, LOW);
+                    } else {
+                        hal->mcp.pinMode(i, INPUT_PULLUP);
                     }
                 }
-            }
-        }
-        
-        if (!ok) {
-            goodReads = 0;
-            hal->mcpFilter.setIoFault(true);
-        } else {
-            if (goodReads < 3) {
-                goodReads++;
-            }
-            if (goodReads >= 3) {
-                hal->mcpFilter.setIoFault(false);
+            } else {
+                if (goodReads < 3) {
+                    goodReads++;
+                }
+                if (goodReads >= 3 && hal->mcpFilter.isIoFault()) {
+                    hal->mcpFilter.setIoFault(false);
+                    hal->mcpFilter.resetFilter();
+                }
             }
         }
         
@@ -284,12 +298,16 @@ void HAL_ESP32::pollModbus() {
     
     // Check timeout for both
     for (int h = 0; h < 2; h++) {
-        if (now - modbusData[h].lastSuccessTime > 5000) {
+        if (now - modbusData[h].lastSuccessTime > config.modbusTimeoutMs) {
             modbusData[h].commOk = false;
         }
     }
 
     if (now - lastModbusPoll < 1000) return;
+    
+    // Only queue if queue is empty
+    if (MB->getMessageCount() > 0) return;
+
     lastModbusPoll = now;
 
     // Asynchronous read (Function 03) from slave

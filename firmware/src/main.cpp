@@ -124,6 +124,7 @@ void setup() {
     });
 
     wm.setConfigPortalBlocking(false);
+    wm.setConnectTimeout(3);
     wm.autoConnect("TermoControl_AP");
     
     std::string url = "/?device=true&secret=" + config.deviceSecret;

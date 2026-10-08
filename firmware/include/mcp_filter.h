@@ -10,7 +10,7 @@ private:
 public:
     MCPFilter(uint32_t ms = 40) : filterMs(ms), ioFault(false) {
         for(int i = 0; i < 16; i++) {
-            lastLowTime[i] = (uint32_t)(-((int)ms + 1));
+            lastLowTime[i] = 0;
         }
     }
 
@@ -32,13 +32,21 @@ public:
         }
     }
 
-    // Called by the application to check if input is active
+    // Called by application
     bool getFilteredInput(int pin, uint32_t now) {
         if (ioFault) return false;
-        return (now - lastLowTime[pin] <= filterMs);
+        uint32_t t = lastLowTime[pin];
+        if (t > now) return true; // Race condition: updated after 'now' was captured
+        return (now - t <= filterMs);
     }
 
     bool isIoFault() const {
         return ioFault;
+    }
+
+    void resetFilter() {
+        for(int i = 0; i < 16; i++) {
+            lastLowTime[i] = 0; // Vai garantir que pareça inativo até a primeira leitura de nível baixo
+        }
     }
 };
