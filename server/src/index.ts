@@ -69,6 +69,8 @@ export type MeasurementQuality = 'OK' | 'FAULT' | 'NOT_MEASURED' | 'COMM_LOST';
 
 export interface BurnerState {
     phase: string;
+    phaseTime_s: number;
+    starts: number;
     permission: boolean;
     requested: boolean;
     blockReasons: string[];
@@ -96,7 +98,17 @@ export interface HeaterState {
     temp: Measurement;
     press: Measurement;
     novus: NovusState;
-    pump: { cmd: boolean; fb: boolean };
+    pump: { cmd: boolean; fb: boolean; fault: boolean };
+    io: { 
+        lockoutS: boolean; 
+        gasValves: boolean; 
+        fan: boolean; 
+        chainOk: boolean; 
+        pumpFb: boolean; 
+        permOut: boolean; 
+        pumpOut: boolean; 
+        pressmA: number; 
+    };
     chainOk: boolean;
 }
 export interface TankState {
@@ -107,6 +119,10 @@ export interface TankState {
     pumpFb: boolean;
     isAuto: boolean;
     isLatched: boolean;
+    lowLevelLatched: boolean;
+    timeoutLatched: boolean;
+    pumpFault: boolean;
+    startsLastHour: number;
     name?: string;
 }
 export interface GLPState {
@@ -118,6 +134,7 @@ interface SystemState {
     seq?: number;
     uptime_s?: number;
     estopOk?: boolean;
+    buzzer?: { on: boolean; silenced: boolean };
     heaters: HeaterState[]; 
     tank: TankState; 
     glp: GLPState; 
@@ -155,22 +172,26 @@ let currentState: SystemState = {
     seq: 0,
     uptime_s: 0,
     estopOk: true,
+    buzzer: { on: false, silenced: false },
     heaters: Object.values(baseHeaters).map(b => ({
         id: b.id!, name: b.name!,
-        burner: { phase: 'OFF', permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
-        temp: { value: 0, quality: 'OK' },
-        press: { value: 0, quality: 'OK' },
-        novus: { commOk: false, pv: 0, sp: 0, mv: 0, auto: false, alarms: [false, false], quality: 'OK' },
-        pump: { cmd: false, fb: false },
+        burner: { phase: 'OFF', phaseTime_s: 0, starts: 0, permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
+        temp: { value: null as any, quality: 'COMM_LOST' },
+        press: { value: null as any, quality: 'COMM_LOST' },
+        novus: { commOk: false, pv: null as any, sp: null as any, mv: null as any, auto: false, alarms: [false, false], quality: 'COMM_LOST' },
+        pump: { cmd: false, fb: false, fault: false },
+        io: { lockoutS: false, gasValves: false, fan: false, chainOk: false, pumpFb: false, permOut: false, pumpOut: false, pressmA: 0 },
         chainOk: false,
     })),
     tank: {
-        id: baseTank.id!, name: baseTank.name!, levelNormal: true, pressureLow: false,
-        pumpCmd: false, pumpFb: false, isAuto: true, isLatched: false
+        id: baseTank.id!, name: baseTank.name!, levelNormal: false, pressureLow: false,
+        pumpCmd: false, pumpFb: false, isAuto: true, isLatched: false,
+        lowLevelLatched: false, timeoutLatched: false, pumpFault: false, startsLastHour: 0
     },
     glp: glpState,
     allowedActions: {},
 };
+const pendingCommands = new Map<string, any>();
 
 // ─── P2: Coleta de histórico (1 ponto/min) ────────────────────────────────────
 
@@ -396,9 +417,13 @@ wss.on('connection', (ws: WebSocket) => {
                 if (!data) return; // O payload agora é o próprio data (sem "payload" em volta segundo o protocolo)
                 
                 // O estado novo é a base, fazemos o merge sobre ele (a rigor o protocolo diz q o ESP32 manda tudo)
-                if (Array.isArray(data.heaters)) currentState.heaters = mergeHeaters(data.heaters);
+                if (data.heaters && Array.isArray(data.heaters)) currentState.heaters = mergeHeaters(data.heaters);
                 if (data.tank) currentState.tank = mergeTank(data.tank);
-
+                if (data.buzzer) currentState.buzzer = data.buzzer;
+                if (data.seq !== undefined) currentState.seq = data.seq;
+                if (data.uptime_s !== undefined) currentState.uptime_s = data.uptime_s;
+                if (data.estopOk !== undefined) currentState.estopOk = data.estopOk;
+                if (data.allowedActions) currentState.allowedActions = data.allowedActions;
                 lastDeviceUpdate = Date.now();
                 if (!deviceIsOnline) {
                     deviceIsOnline = true;
@@ -422,9 +447,10 @@ wss.on('connection', (ws: WebSocket) => {
             if (data.type === 'ack') {
                 if (!aws.isDevice) return;
                 
-                // Repassa o ack para as telas e registra na auditoria
-                writeAudit({ timestamp: new Date().toISOString(), username: 'ESP32', role: 'Device', ip: aws.ip, target: data.id || 'N/A', command: 'ACK', value: data.accepted ? 'ACCEPTED' : 'REJECTED', result: data.reason });
-                
+                // Repassa o ack para as telas e registra na auditoria correlacionando pelo id
+                const cmdInfo = pendingCommands.get(data.id) || { user: 'ESP32', role: 'Device', target: data.id || 'N/A', command: 'ACK' };
+                writeAudit({ timestamp: new Date().toISOString(), username: cmdInfo.user, role: cmdInfo.role, ip: aws.ip, target: cmdInfo.target, command: cmdInfo.command, value: data.accepted ? 'ACCEPTED' : 'REJECTED', result: data.reason });
+                pendingCommands.delete(data.id);                
                 const ackMsg = JSON.stringify(data);
                 wss.clients.forEach(c => {
                     const cws = c as AuthenticatedWS;
@@ -458,6 +484,8 @@ wss.on('connection', (ws: WebSocket) => {
                     return;
                 }
 
+
+
                 // Prepara a mensagem para o ESP32 carimbando o user e role
                 const commandToDevice = {
                     type: 'command',
@@ -469,6 +497,8 @@ wss.on('connection', (ws: WebSocket) => {
                     role: user.role,
                     reason: data.reason || 'S/N'
                 };
+                pendingCommands.set(commandToDevice.id, commandToDevice);
+                setTimeout(() => pendingCommands.delete(commandToDevice.id), 15000);
 
                 const commandMsg = JSON.stringify(commandToDevice);
                 wss.clients.forEach(c => {
@@ -716,11 +746,15 @@ app.get('*', (req, res) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
-server.listen(PORT, () => {
-    console.log(`[Server] Backend SCADA → http://localhost:${PORT}`);
-    console.log(`[Server] GET  /history?equipment=AQ01&from=<ISO>&to=<ISO>`);
-    console.log(`[Server] GET  /history/export?equipment=AQ01`);
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`[Server] Backend SCADA → http://localhost:${PORT}`);
+        console.log(`[Server] GET  /history?equipment=AQ01&from=<ISO>&to=<ISO>`);
+        console.log(`[Server] GET  /history/export?equipment=AQ01`);
+    });
+}
+
+export { server, wss };
 
 // Flush graceful ao encerrar
 process.on('SIGINT', () => { flushHistory(); persistGLP(); process.exit(0); });
