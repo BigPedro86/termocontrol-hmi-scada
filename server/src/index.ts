@@ -30,7 +30,7 @@ if (!process.env.DEVICE_SECRET || process.env.DEVICE_SECRET.length < 32) {
     console.error('[Server] FATAL: DEVICE_SECRET não definido ou com menos de 32 caracteres no .env. Gere uma chave segura.');
     process.exit(1);
 }
-if (process.env.ADMIN_PASS_HASH === '$2b$10$Aeo.jQnsQ1JNXJlWf/pK1ezerx0AB6pCcsj7NN4h0nLK3lDlELmx2') {
+if (process.env.ADMIN_PASS_HASH && require('bcryptjs').compareSync('admin123', process.env.ADMIN_PASS_HASH)) {
     console.error('[Server] FATAL: ADMIN_PASS_HASH corresponde à senha padrão "admin123". Gere um novo hash bcrypt e atualize o .env.');
     process.exit(1);
 }
@@ -47,6 +47,14 @@ function dropUserSessions(username: string) {
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 
 seedAdminIfNeeded();
+
+const { getUserByUsername } = require('./auth');
+const adminUsername = process.env.ADMIN_USER || 'admin';
+const adminDbUser = getUserByUsername(adminUsername);
+if (adminDbUser && require('bcryptjs').compareSync('admin123', adminDbUser.passwordHash)) {
+    console.error(`[Server] FATAL: O usuário '${adminUsername}' ainda usa a senha padrão "admin123". Use o script tools/trocar-senha.ts para alterar a senha e inicie o servidor novamente.`);
+    process.exit(1);
+}
 
 const app = express();
 app.use(cors({ origin: '*', credentials: true }));
