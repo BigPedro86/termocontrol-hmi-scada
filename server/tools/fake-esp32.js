@@ -1,7 +1,12 @@
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
 
 const secret = 'esp32_termocontrol_device_secret_2024';
 const url = `ws://localhost:3000/?device=true&secret=${secret}`;
+
+const contratoPath = path.join(__dirname, '../../docs/protocolo/state.exemplo.json');
+let payload = JSON.parse(fs.readFileSync(contratoPath, 'utf8'));
 
 let ws;
 function connect() {
@@ -15,13 +20,31 @@ function connect() {
     try {
       const msg = JSON.parse(data);
       if (msg.type === 'command') {
-        console.log('Comando recebido:', msg);
-        // Simulando ack automático aceitando tudo
+        console.log(`Comando recebido: ID=${msg.id} Target=${msg.target} CMD=${msg.command} Value=${msg.value}`);
+        let accepted = false;
+        let reason = 'INVALID_COMMAND';
+
+        if (msg.target === 'AQ01') {
+          const h = payload.heaters.find(h => h.id === 'AQ01');
+          if (msg.command === 'BURNER_START') {
+            h.burner.requested = true;
+            h.burner.phase = 'RUNNING';
+            accepted = true;
+            reason = 'START_ACCEPTED';
+          } else if (msg.command === 'BURNER_STOP') {
+            h.burner.requested = false;
+            h.burner.permission = false;
+            h.burner.phase = 'OFF';
+            accepted = true;
+            reason = 'STOP_EXECUTED';
+          }
+        }
+
         ws.send(JSON.stringify({
           type: 'ack',
           id: msg.id,
-          accepted: true,
-          reason: 'OK'
+          accepted,
+          reason
         }));
       } else if (msg.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
@@ -42,123 +65,51 @@ function sendState() {
   const isLowLevel = process.argv.includes('--low-level');
   const noNovus = process.argv.includes('--no-novus');
 
-  const payload = {
-    seq: Date.now(),
-    uptime_s: Math.floor(process.uptime()),
-    estopOk: true,
-    buzzer: { on: false, silenced: false },
-    heaters: [
-      {
-        id: 'AQ01',
-        name: 'Aquecedor 01',
-        burner: {
-          phase: (isLowLevel || isSensorFault) ? 'OFF' : 'RUNNING',
-          phaseTime_s: 45,
-          starts: 12,
-          permission: !(isLowLevel || isSensorFault),
-          requested: true,
-          blockReasons: [
-            ...(isLowLevel ? ['TANK_LOW_LEVEL'] : []),
-            ...(isSensorFault ? ['TEMP_SENSOR_FAULT'] : [])
-          ],
-          lockout: false,
-          lockoutCount24h: 0,
-          runHours: 120
-        },
-        temp: {
-          value: isSensorFault ? null : 85.0,
-          quality: isSensorFault ? 'FAULT' : 'OK'
-        },
-        press: {
-          value: 3.5,
-          quality: 'OK'
-        },
-        novus: {
-          commOk: !noNovus,
-          pv: noNovus ? null : 85.0,
-          sp: noNovus ? null : 80.0,
-          mv: noNovus ? null : 45.0,
-          auto: true,
-          alarms: [false, false],
-          quality: noNovus ? 'COMM_LOST' : 'OK'
-        },
-        pump: {
-          cmd: true,
-          fb: true,
-          fault: false
-        },
-        io: { lockoutS: false, gasValves: !(isLowLevel || isSensorFault), fan: !(isLowLevel || isSensorFault), chainOk: true, pumpFb: true, permOut: !(isLowLevel || isSensorFault), pumpOut: true, pressmA: 12.0 },
-        chainOk: true
-      },
-      {
-        id: 'AQ02',
-        name: 'Aquecedor 02',
-        burner: {
-          phase: 'OFF',
-          phaseTime_s: 0,
-          starts: 5,
-          permission: false,
-          requested: false,
-          blockReasons: [
-            ...(isLowLevel ? ['TANK_LOW_LEVEL'] : []),
-            'Parada comandada pelo operador', 'PUMP_FAULT'
-          ],
-          lockout: false,
-          lockoutCount24h: 1,
-          runHours: 3.1
-        },
-        temp: {
-          value: 41.8,
-          quality: 'OK'
-        },
-        press: {
-          value: null,
-          quality: 'FAULT'
-        },
-        novus: {
-          commOk: false,
-          pv: null,
-          sp: null,
-          mv: null,
-          auto: true,
-          alarms: [false, false],
-          quality: 'COMM_LOST'
-        },
-        pump: {
-          cmd: false,
-          fb: false,
-          fault: true
-        },
-        io: { lockoutS: false, gasValves: false, fan: false, chainOk: false, pumpFb: false, permOut: false, pumpOut: false, pressmA: 3.0 },
-        chainOk: false
+  // Atualiza campos dinâmicos básicos
+  payload.seq = Date.now();
+  payload.uptime_s = Math.floor(process.uptime());
+
+  // Aplica simulações (opcionais, com base nas flags de linha de comando)
+  if (isLowLevel) {
+    payload.tank.levelNormal = false;
+    payload.alarms.push({ code: 'LEVEL_LL', severity: 'H', active: true, acked: false, since: payload.uptime_s });
+    if (payload.heaters[0]) {
+      payload.heaters[0].burner.phase = 'OFF';
+      payload.heaters[0].burner.permission = false;
+      if (!payload.heaters[0].burner.blockReasons.includes('TANK_LOW_LEVEL')) {
+          payload.heaters[0].burner.blockReasons.push('TANK_LOW_LEVEL');
       }
-    ],
-    tank: {
-      levelNormal: !isLowLevel,
-      pressureLow: false,
-      pumpCmd: false,
-      pumpFb: false,
-      isAuto: true,
-      isLatched: false,
-      lowLevelLatched: false,
-      timeoutLatched: false,
-      pumpFault: false,
-      startsLastHour: 0
-    },
-    alarms: [
-      ...(isSensorFault ? [{ code: 'TEMP_H', severity: 'H', active: true, acked: false, since: Math.floor(process.uptime()) }] : []),
-      ...(isLowLevel ? [{ code: 'LEVEL_LL', severity: 'H', active: true, acked: false, since: Math.floor(process.uptime()) }] : [])
-    ],
-    allowedActions: {
-      'AQ01': isLowLevel ? [] : ['BURNER_START', 'BURNER_STOP', 'PUMP_START', 'PUMP_STOP', 'FAULT_RESET'],
-      'TX01': ['TX01_PUMP_STOP', 'TX01_AUTO', 'TANK_LEVEL_RESET'],
-      'SYS': ['ALARM_SILENCE', 'ALARM_ACK']
+      payload.heaters[0].io.permOut = false;
+      payload.heaters[0].io.gasValves = false;
+      payload.heaters[0].io.fan = false;
     }
-  };
+    payload.allowedActions['AQ01'] = [];
+  }
+
+  if (isSensorFault) {
+    if (payload.heaters[0]) {
+      payload.heaters[0].temp.quality = 'FAULT';
+      payload.heaters[0].temp.value = null;
+      payload.heaters[0].burner.phase = 'OFF';
+      payload.heaters[0].burner.permission = false;
+      if (!payload.heaters[0].burner.blockReasons.includes('TEMP_SENSOR_FAULT')) {
+          payload.heaters[0].burner.blockReasons.push('TEMP_SENSOR_FAULT');
+      }
+    }
+    payload.alarms.push({ code: 'TEMP_H', severity: 'H', active: true, acked: false, since: payload.uptime_s });
+  }
+
+  if (noNovus && payload.heaters[0]) {
+    payload.heaters[0].novus.commOk = false;
+    payload.heaters[0].novus.quality = 'COMM_LOST';
+    payload.heaters[0].novus.pv = null;
+    payload.heaters[0].novus.sp = null;
+    payload.heaters[0].novus.mv = null;
+  }
 
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'state', ...payload }));
+    ws.send(JSON.stringify(payload)); // O JSON já possui "type": "state" na raiz
   }
 }
 
-connect();
+connect();;

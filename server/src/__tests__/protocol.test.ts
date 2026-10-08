@@ -163,4 +163,47 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
         }, 100);
     });
 
+    it('Auditoria de ack que chega 1s depois do comando', (done) => {
+        const { readAudit } = require('../audit');
+        const cmdId = 'test-audit-ack-1';
+        
+        deviceWs.on('message', function devHandler(data: WebSocket.Data) {
+            const msg = JSON.parse(data.toString());
+            if (msg.type === 'command' && msg.id === cmdId) {
+                // Simula o ESP32 recebendo e atrasando o ack em 1 segundo
+                setTimeout(() => {
+                    deviceWs.send(JSON.stringify({
+                        type: 'ack',
+                        id: cmdId,
+                        accepted: false,
+                        reason: 'LFL_LOCKOUT'
+                    }));
+                }, 1000);
+                deviceWs.off('message', devHandler);
+            }
+        });
+
+        // HMI manda comando
+        authHmiWs.send(JSON.stringify({
+            type: 'command',
+            id: cmdId,
+            target: 'AQ01',
+            command: 'BURNER_STOP',
+            value: null
+        }));
+
+        // Aguarda 1.5s para checar no banco de auditoria
+        setTimeout(() => {
+            try {
+                const logs = readAudit();
+                const log = logs.find((l: any) => l.command === 'BURNER_STOP' && l.result === 'LFL_LOCKOUT');
+                expect(log).toBeDefined();
+                expect(log.username).toBe('admin');
+                expect(log.value).toBe('REJECTED');
+                done();
+            } catch (e) {
+                done(e);
+            }
+        }, 1500);
+    });
 });

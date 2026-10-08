@@ -191,7 +191,28 @@ let currentState: SystemState = {
     glp: glpState,
     allowedActions: {},
 };
-const pendingCommands = new Map<string, any>();
+const pendingCommands = new Map<string, { user: string, role: string, target: string, command: string, timestamp: number }>();
+
+// Limpeza a cada 30s das requisições órfãs
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, info] of pendingCommands.entries()) {
+        if (now - info.timestamp > 30000) {
+            console.warn(`[Server] Limpando comando órfão ${id} de ${info.user}`);
+            writeAudit({
+                timestamp: new Date().toISOString(),
+                username: info.user,
+                role: info.role,
+                ip: 'unknown',
+                target: info.target,
+                command: info.command,
+                value: 'TIMEOUT',
+                result: 'sem ack do ESP32'
+            });
+            pendingCommands.delete(id);
+        }
+    }
+}, 30000);
 
 // ─── P2: Coleta de histórico (1 ponto/min) ────────────────────────────────────
 
@@ -474,6 +495,7 @@ wss.on('connection', (ws: WebSocket) => {
                 
                 // Repassa o ack para as telas e registra na auditoria correlacionando pelo id
                 const cmdInfo = pendingCommands.get(data.id) || { user: 'ESP32', role: 'Device', target: data.id || 'N/A', command: 'ACK' };
+                console.log(`[Server] Ack recebido: aceito=${data.accepted} motivo=${data.reason || 'N/A'} (Usuário: ${cmdInfo.user})`);
                 writeAudit({ timestamp: new Date().toISOString(), username: cmdInfo.user, role: cmdInfo.role, ip: aws.ip, target: cmdInfo.target, command: cmdInfo.command, value: data.accepted ? 'ACCEPTED' : 'REJECTED', result: data.reason });
                 pendingCommands.delete(data.id);                
                 const ackMsg = JSON.stringify(data);
@@ -522,8 +544,13 @@ wss.on('connection', (ws: WebSocket) => {
                     role: user.role,
                     reason: data.reason || 'S/N'
                 };
-                pendingCommands.set(commandToDevice.id, commandToDevice);
-                setTimeout(() => pendingCommands.delete(commandToDevice.id), 15000);
+                pendingCommands.set(commandToDevice.id, {
+                    user: commandToDevice.user,
+                    role: commandToDevice.role,
+                    target: commandToDevice.target,
+                    command: commandToDevice.command,
+                    timestamp: Date.now()
+                });
 
                 const commandMsg = JSON.stringify(commandToDevice);
                 wss.clients.forEach(c => {
