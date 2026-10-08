@@ -31,7 +31,7 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
     it('HMI recebe estado inicial com COMM_LOST antes do primeiro state do ESP32', (done) => {
         hmiWs = new WebSocket(`ws://localhost:${port}/?token=`);
         
-        hmiWs.on('message', (data) => {
+        const handler = (data: WebSocket.Data) => {
             const msg = JSON.parse(data.toString());
             if (msg.type === 'state') {
                 const payload = msg.payload || msg;
@@ -39,9 +39,11 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
                 expect(aq01.temp.quality).toBe('COMM_LOST');
                 expect(aq01.temp.value).toBeNull();
                 expect(aq01.novus.quality).toBe('COMM_LOST');
+                hmiWs.off('message', handler);
                 done();
             }
-        });
+        };
+        hmiWs.on('message', handler);
     });
 
     it('ESP32 envia state plano e HMI recebe o estado mesclado atualizado', (done) => {
@@ -52,7 +54,7 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
             deviceWs.send(stateStr);
         });
 
-        hmiWs.on('message', (data) => {
+        const handler2 = (data: WebSocket.Data) => {
             const msg = JSON.parse(data.toString());
             if (msg.type === 'state') {
                 const payload = msg.payload || msg;
@@ -61,10 +63,42 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
                     expect(aq01.temp.quality).toBe('OK');
                     expect(aq01.burner.phase).toBe('STANDBY');
                     expect(payload.glp).toBeDefined(); // Verifica merge
+                    hmiWs.off('message', handler2);
                     done();
                 }
             }
-        });
+        };
+        hmiWs.on('message', handler2);
+    });
+
+    it('N14 - Merge no broadcast: IHM recebe o name preservado e ignora campos lixo', (done) => {
+        // Envia um payload propositalmente sem o "name" do aquecedor e com um campo lixo
+        const incompleteState = {
+            type: 'state',
+            seq: 1,
+            uptime_s: 10,
+            heaters: [{
+                id: 'AQ01',
+                temp: { value: 50.0, quality: 'OK' },
+                lixo: 'dado ignorado'
+            }]
+        };
+
+        const handler = (data: WebSocket.Data) => {
+            const msg = JSON.parse(data.toString());
+            if (msg.type === 'state') {
+                const aq01 = msg.heaters?.find((h: any) => h.id === 'AQ01');
+                if (aq01 && aq01.temp.value === 50.0) {
+                    expect(aq01.name).toBe('Aquecedor 01'); // name mantido
+                    expect(aq01.temp.value).toBe(50.0);
+                    expect(aq01.lixo).toBeUndefined(); // campo lixo ignorado (não mesclado ao currentState)
+                    hmiWs.off('message', handler);
+                    done();
+                }
+            }
+        };
+        hmiWs.on('message', handler);
+        deviceWs.send(JSON.stringify(incompleteState));
     });
 
     it('Servidor repassa comandos planos da HMI para o ESP32, mesmo que não estejam em allowedActions', (done) => {
@@ -128,4 +162,5 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
             }));
         }, 100);
     });
+
 });

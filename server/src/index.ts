@@ -291,11 +291,24 @@ function broadcastAlarms() {
 function mergeHeaters(incoming: Partial<HeaterState>[]): HeaterState[] {
     return currentState.heaters.map(known => {
         const update = incoming.find(h => h.id === known.id);
-        return update ? { ...known, ...update } : known;
+        if (!update) return known;
+        const result = { ...known };
+        for (const key of Object.keys(known)) {
+            if (key in update) {
+                (result as any)[key] = (update as any)[key];
+            }
+        }
+        return result;
     });
 }
 function mergeTank(incoming: Partial<TankState>): TankState {
-    return { ...currentState.tank, ...incoming };
+    const result = { ...currentState.tank };
+    for (const key of Object.keys(currentState.tank)) {
+        if (key in incoming) {
+            (result as any)[key] = (incoming as any)[key];
+        }
+    }
+    return result;
 }
 
 // ─── GLP Commands (B3) ────────────────────────────────────────────────────────
@@ -439,8 +452,20 @@ wss.on('connection', (ws: WebSocket) => {
                 syncAlarmsFromDevice(data.alarms || []);
                 broadcastAlarms();
                 
-                // Agora enviamos o estado completo para os HMIs
-                broadcastToHMI(JSON.stringify({ type: 'state', ...data, glp: glpState }));
+                // Agora enviamos o estado completo para os HMIs usando o currentState + alarms do device + glp do server
+                const fullState = {
+                    type: 'state',
+                    heaters: currentState.heaters,
+                    tank: currentState.tank,
+                    buzzer: currentState.buzzer,
+                    seq: currentState.seq,
+                    uptime_s: currentState.uptime_s,
+                    estopOk: currentState.estopOk,
+                    allowedActions: currentState.allowedActions,
+                    alarms: data.alarms || [],
+                    glp: glpState
+                };
+                broadcastToHMI(JSON.stringify(fullState));
                 return;
             }
 
