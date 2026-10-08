@@ -2,30 +2,41 @@
 
 ## 1. Tabela de E/S (I/O Map)
 
-Abaixo está o mapeamento de sinais do firmware (fonte: `firmware/include/io_map.h`).
-**Regra:** Não são utilizados os pinos de strapping do ESP32 (0, 2, 5, 12, 15) para saídas ou comunicação que possam interferir no boot.
+| Módulo | Pino ESP32 / Porta | Sinal | E/S | Comentário | Ativo em | Com fio rompido |
+|---|---|---|---|---|---|---|
+| **ESP32** | GPIO 25 | AQ01_PERM_CMD | Saída | Habilitação do queimador 1 | Alto | N/A |
+| **ESP32** | GPIO 26 | AQ02_PERM_CMD | Saída | Habilitação do queimador 2 | Alto | N/A |
+| **ESP32** | GPIO 27 | AQ01_PUMP_CMD | Saída | Bomba 1 | Alto | N/A |
+| **ESP32** | GPIO 32 | AQ02_PUMP_CMD | Saída | Bomba 2 | Alto | N/A |
+| **ESP32** | GPIO 33 | TX01_PUMP_CMD | Saída | Bomba de reposição | Alto | N/A |
+| **MAX31865 (1)** | GPIO 13 | AQ01_CS | Saída | Chip Select PT100 1 | Baixo | N/A |
+| **MAX31865 (2)** | GPIO 14 | AQ02_CS | Saída | Chip Select PT100 2 | Baixo | N/A |
+| **SPI Bus** | GPIO 23 | SPI_MOSI | Saída | Barramento SPI | N/A | N/A |
+| **SPI Bus** | GPIO 19 | SPI_MISO | Entrada | Barramento SPI | N/A | N/A |
+| **SPI Bus** | GPIO 18 | SPI_SCK | Saída | Barramento SPI | N/A | N/A |
+| **RS485** | GPIO 17 | RS485_TX | Saída | TX Modbus (UART2) | N/A | N/A |
+| **RS485** | GPIO 16 | RS485_RX | Entrada | RX Modbus (UART2) | N/A | N/A |
+| **RS485** | GPIO 4 | RS485_DE_RE | Saída | Controle de direção (DE/RE) | N/A | N/A |
+| **I2C Bus** | GPIO 21 | I2C_SDA | E/S | Barramento I2C | N/A | N/A |
+| **I2C Bus** | GPIO 22 | I2C_SCL | Saída | Barramento I2C | N/A | N/A |
+| **ADS1115** | I2C A0 | AQ01_PRESS | Entrada | Analógica 4-20mA (AQ01) | N/A | 0 mA (FAULT) |
+| **ADS1115** | I2C A1 | AQ02_PRESS | Entrada | Analógica 4-20mA (AQ02) | N/A | 0 mA (FAULT) |
+| **MCP23017** | Porta 0 | AQ01_LOCKOUT | Entrada | Falha queimador 1 | Baixo | Bloqueio não detectado |
+| **MCP23017** | Porta 1 | AQ01_GAS_VALVES | Entrada | Retorno válvulas de gás 1 | Baixo | Detectado pelo IGNITION_TIMEOUT |
+| **MCP23017** | Porta 2 | AQ01_FAN | Entrada | Retorno ventilador 1 | Baixo | Gera DISCREPANCY_GAS_WITHOUT_FAN |
+| **MCP23017** | Porta 3 | AQ01_CHAIN_OK | Entrada | Cadeia de segurança 1 | Baixo | Não OK |
+| **MCP23017** | Porta 4 | AQ01_PUMP_FB | Entrada | Retorno bomba 1 | Baixo | Não OK |
+| **MCP23017** | Porta 5 | AQ02_LOCKOUT | Entrada | Falha queimador 2 | Baixo | Bloqueio não detectado |
+| **MCP23017** | Porta 6 | AQ02_GAS_VALVES | Entrada | Retorno válvulas de gás 2 | Baixo | Detectado pelo IGNITION_TIMEOUT |
+| **MCP23017** | Porta 14 | AQ02_FAN | Entrada | Retorno ventilador 2 | Baixo | Gera DISCREPANCY_GAS_WITHOUT_FAN |
+| **MCP23017** | Porta 8 | AQ02_CHAIN_OK | Entrada | Cadeia de segurança 2 | Baixo | Não OK |
+| **MCP23017** | Porta 9 | AQ02_PUMP_FB | Entrada | Retorno bomba 2 | Baixo | Não OK |
+| **MCP23017** | Porta 10 | ESTOP_OK | Entrada | Emergência geral | Baixo | Não OK |
+| **MCP23017** | Porta 11 | TX01_LEVEL_SW | Entrada | Nível tanque (0 = Normal, 1 = Baixo) | Baixo | Baixo |
+| **MCP23017** | Porta 12 | TX01_PRESS_SW | Entrada | Pressostato reposição | Baixo | Reposição não liga |
+| **MCP23017** | Porta 13 | TX01_PUMP_FB | Entrada | Retorno bomba reposição | Baixo | Não OK |
+| **MCP23017** | Porta 15 | BUZZER | Saída | Sirene de alarme | Alto | N/A |
 
-| Sinal | Direção | Tipo / Protocolo | Pino/Porta | Descrição |
-|---|---|---|---|---|
-| `AQ01_PERM_CMD` | Saída | Relé Direto (DO) | GPIO 18 | Permissão do Aquecedor 01 (Série com TL) |
-| `AQ02_PERM_CMD` | Saída | Relé Direto (DO) | GPIO 19 | Permissão do Aquecedor 02 (Série com TL) |
-| `AQ01_PUMP_CMD` | Saída | Relé Direto (DO) | GPIO 21 | Comando da Bomba 01 |
-| `AQ02_PUMP_CMD` | Saída | Relé Direto (DO) | GPIO 22 | Comando da Bomba 02 |
-| `TX01_PUMP_CMD` | Saída | Relé Direto (DO) | GPIO 23 | Comando da Bomba do Tanque (A Confirmar) |
-| `BUZZER` | Saída | Relé Direto (DO) | GPIO 25 | Sirene de Alarme |
-| `AQ01_LOCKOUT` | Entrada | Isolada (MCP23017) | Porta 0 | Retorno de Bloqueio (Sinal S) - AQ01 |
-| `AQ01_GAS_VALVES` | Entrada | Isolada (MCP23017) | Porta 1 | Retorno Válvulas Abertas (Borne V) - AQ01 |
-| `AQ01_FAN` | Entrada | Isolada (MCP23017) | Porta 2 | Retorno Contator Ventilador - AQ01 |
-| `AQ01_CHAIN_OK` | Entrada | Isolada (MCP23017) | Porta 3 | Tensão Cadeia Segurança OK - AQ01 |
-| `AQ01_PUMP_FB` | Entrada | Isolada (MCP23017) | Porta 4 | Prova de Fluxo da Bomba - AQ01 |
-| `ESTOP_OK` | Entrada | Isolada (MCP23017) | Porta 10 | Botão de Emergência OK |
-| `AQ01_PRESS` | Entrada | 4-20mA (ADS1115) | Canal 0 | Pressão de Água - AQ01 |
-| `AQ01_TEMP` | Entrada | PT100 (MAX31865) | CS: GPIO 4 | Temperatura de Água - AQ01 |
-| Modbus RTU | IN/OUT | RS485 (UART2) | RX:16, TX:17, DE:5 | Leitura do controlador Novus N2000S |
-
-*(Os sinais do AQ02 seguem a mesma lógica, listados no `io_map.h`)*
-
----
 
 ## 2. Máquina de Estados do Queimador
 
