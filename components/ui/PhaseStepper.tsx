@@ -3,11 +3,13 @@ import { BurnerPhase } from '../../types';
 
 interface PhaseStepperProps {
   phase: BurnerPhase;
+  isOnline?: boolean;
 }
 
 const PHASES = [
   { id: 'OFF', label: 'PARADO' },
   { id: 'WAIT_PUMP', label: 'AGUARDANDO BOMBA' },
+  { id: 'STANDBY', label: 'EM ESPERA' },
   { id: 'PURGE', label: 'PURGA' },
   { id: 'RUNNING', label: 'QUEIMANDO' },
   { id: 'POST_PURGE', label: 'PÓS-PURGA' }

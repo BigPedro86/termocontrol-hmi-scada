@@ -45,6 +45,7 @@ interface AppContextType {
   setSettings: (settings: AppSettings) => void;
   activeAlarms: Alarm[];
   ackAlarm: (id: string) => Promise<void>;
+  state: SystemState;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -80,26 +81,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [heaters, setHeaters] = useState<HeaterState[]>([
     {
       id: 'AQ01', name: 'Aquecedor 01',
-      burner: { phase: 'OFF', permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
+      burner: { phase: 'OFF', phaseTime_s: 0, starts: 0, permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
       temp: { value: 0, quality: 'NOT_MEASURED' },
       press: { value: 0, quality: 'NOT_MEASURED' },
       novus: { commOk: false, pv: 0, sp: 0, mv: 0, auto: false, alarms: [false, false], quality: 'NOT_MEASURED' },
-      pump: { cmd: false, fb: false },
+      pump: { cmd: false, fb: false, fault: false },
+      io: { lockoutS: false, gasValves: false, fan: false, chainOk: false, pumpFb: false, permOut: false, pumpOut: false, pressmA: 0 },
       chainOk: false,
     },
     {
       id: 'AQ02', name: 'Aquecedor 02',
-      burner: { phase: 'OFF', permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
+      burner: { phase: 'OFF', phaseTime_s: 0, starts: 0, permission: false, requested: false, blockReasons: [], lockout: false, lockoutCount24h: 0, runHours: 0 },
       temp: { value: 0, quality: 'NOT_MEASURED' },
       press: { value: 0, quality: 'NOT_MEASURED' },
       novus: { commOk: false, pv: 0, sp: 0, mv: 0, auto: false, alarms: [false, false], quality: 'NOT_MEASURED' },
-      pump: { cmd: false, fb: false },
+      pump: { cmd: false, fb: false, fault: false },
+      io: { lockoutS: false, gasValves: false, fan: false, chainOk: false, pumpFb: false, permOut: false, pumpOut: false, pressmA: 0 },
       chainOk: false,
     },
   ]);
   const [tank, setTank] = useState<TankState>({
     id: 'TX01', name: 'Tanque de Expansão', levelNormal: true, pressureLow: false,
     pumpCmd: false, pumpFb: false, isAuto: true, isLatched: false,
+    lowLevelLatched: false, timeoutLatched: false, pumpFault: false, startsLastHour: 0
   });
   const [glp, setGlp] = useState<GLPState>({
     currentLevelKg: 0, capacityKg: 8000, dailyConsumption: 0, readings: [], refills: [],
@@ -438,6 +442,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       login, logout,
       updateGLP,
       sendCommand, ackAlarms, ackAlarm, setSettings,
+      state: { heaters, tank, glp, allowedActions, alarms: activeAlarms, seq: lastUpdateTs || 0, uptime_s: 0, estopOk: true, buzzer: { on: false, silenced: false } }
     }}>
       {children}
     </AppContext.Provider>

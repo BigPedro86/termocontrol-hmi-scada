@@ -19,10 +19,9 @@ function connect() {
         // Simulando ack automático aceitando tudo
         ws.send(JSON.stringify({
           type: 'ack',
-          payload: {
-            id: msg.payload.id,
-            accepted: true
-          }
+          id: msg.id,
+          accepted: true,
+          reason: 'OK'
         }));
       } else if (msg.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
@@ -47,12 +46,15 @@ function sendState() {
     seq: Date.now(),
     uptime_s: Math.floor(process.uptime()),
     estopOk: true,
+    buzzer: { on: false, silenced: false },
     heaters: [
       {
         id: 'AQ01',
         name: 'Aquecedor 01',
         burner: {
           phase: (isLowLevel || isSensorFault) ? 'OFF' : 'RUNNING',
+          phaseTime_s: 45,
+          starts: 12,
           permission: !(isLowLevel || isSensorFault),
           requested: true,
           blockReasons: [
@@ -64,7 +66,7 @@ function sendState() {
           runHours: 120
         },
         temp: {
-          value: isSensorFault ? 0 : 85.0,
+          value: isSensorFault ? null : 85.0,
           quality: isSensorFault ? 'FAULT' : 'OK'
         },
         press: {
@@ -73,17 +75,19 @@ function sendState() {
         },
         novus: {
           commOk: !noNovus,
-          pv: noNovus ? 0 : 85.0,
-          sp: noNovus ? 0 : 80.0,
-          mv: noNovus ? 0 : 45.0,
+          pv: noNovus ? null : 85.0,
+          sp: noNovus ? null : 80.0,
+          mv: noNovus ? null : 45.0,
           auto: true,
           alarms: [false, false],
           quality: noNovus ? 'COMM_LOST' : 'OK'
         },
         pump: {
           cmd: true,
-          fb: true
+          fb: true,
+          fault: false
         },
+        io: { lockoutS: false, gasValves: !(isLowLevel || isSensorFault), fan: !(isLowLevel || isSensorFault), chainOk: true, pumpFb: true, permOut: !(isLowLevel || isSensorFault), pumpOut: true, pressmA: 12.0 },
         chainOk: true
       },
       {
@@ -91,11 +95,13 @@ function sendState() {
         name: 'Aquecedor 02',
         burner: {
           phase: 'OFF',
+          phaseTime_s: 0,
+          starts: 5,
           permission: false,
           requested: false,
           blockReasons: [
             ...(isLowLevel ? ['TANK_LOW_LEVEL'] : []),
-            'Parada comandada pelo operador', 'Falha no sensor de pressão', 'Bomba sem confirmação de funcionamento'
+            'Parada comandada pelo operador', 'PUMP_FAULT'
           ],
           lockout: false,
           lockoutCount24h: 1,
@@ -106,22 +112,24 @@ function sendState() {
           quality: 'OK'
         },
         press: {
-          value: 0,
+          value: null,
           quality: 'FAULT'
         },
         novus: {
           commOk: false,
-          pv: 0,
-          sp: 0,
-          mv: 0,
+          pv: null,
+          sp: null,
+          mv: null,
           auto: true,
           alarms: [false, false],
           quality: 'COMM_LOST'
         },
         pump: {
           cmd: false,
-          fb: false
+          fb: false,
+          fault: true
         },
+        io: { lockoutS: false, gasValves: false, fan: false, chainOk: false, pumpFb: false, permOut: false, pumpOut: false, pressmA: 3.0 },
         chainOk: false
       }
     ],
@@ -131,17 +139,20 @@ function sendState() {
       pumpCmd: false,
       pumpFb: false,
       isAuto: true,
-      isLatched: false
+      isLatched: false,
+      lowLevelLatched: false,
+      timeoutLatched: false,
+      pumpFault: false,
+      startsLastHour: 0
     },
     alarms: [
-      ...(isSensorFault ? [{ id: 'alm_sensor_aq01', equipment: 'AQ01', type: 'SensorFault', description: 'Falha no sensor de temperatura', severity: 'Danger', timestamp: new Date().toISOString(), cleared: false, acked: false }] : []),
-      ...(isLowLevel ? [{ id: 'alm_tank_low', equipment: 'TX01', type: 'LowLevel', description: 'Nível baixo detectado', severity: 'Danger', timestamp: new Date().toISOString(), cleared: false, acked: false }] : []),
-      { id: 'alm_press_aq02', equipment: 'AQ02', type: 'SensorFault', description: 'Falha no sensor de pressão', severity: 'Danger', timestamp: new Date().toISOString(), cleared: false, acked: false },
-      { id: 'alm_novus_aq02', equipment: 'AQ02', type: 'CommLoss', description: 'Sem comunicação com o Novus', severity: 'Warning', timestamp: new Date(Date.now() - 261000).toISOString(), cleared: false, acked: true }
+      ...(isSensorFault ? [{ code: 'TEMP_H', severity: 'H', active: true, acked: false, since: Math.floor(process.uptime()) }] : []),
+      ...(isLowLevel ? [{ code: 'LEVEL_LL', severity: 'H', active: true, acked: false, since: Math.floor(process.uptime()) }] : [])
     ],
     allowedActions: {
-      'AQ01': isLowLevel ? [] : ['BURNER_START', 'BURNER_STOP', 'PUMP_START', 'PUMP_STOP'],
-      'TX01': ['TX01_PUMP_STOP', 'TX01_AUTO', 'TANK_LEVEL_RESET']
+      'AQ01': isLowLevel ? [] : ['BURNER_START', 'BURNER_STOP', 'PUMP_START', 'PUMP_STOP', 'FAULT_RESET'],
+      'TX01': ['TX01_PUMP_STOP', 'TX01_AUTO', 'TANK_LEVEL_RESET'],
+      'SYS': ['ALARM_SILENCE', 'ALARM_ACK']
     }
   };
 

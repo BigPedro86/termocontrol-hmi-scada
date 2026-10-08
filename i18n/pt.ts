@@ -11,6 +11,11 @@ export const TRANSLATIONS: Record<string, string> = {
   TANK_LOW_LEVEL: 'Nível baixo no tanque de expansão',
   TANK_LEVEL_STILL_LOW: 'Nível de água ainda está baixo',
   TANK_NOT_AUTOMATIC: 'Tanque não está em modo automático',
+  STANDBY: 'Em espera',
+  NO_PUMP_FLOW: 'Ausência de fluxo da bomba',
+  DISCREPANCY_GAS_WITHOUT_FAN: 'Discrepância: Gás atuado sem ventilação',
+  SERVER_LOST: 'Perda de conexão com o servidor SCADA',
+  PUMP_FAULT: 'Falha na bomba',
 };
 
 export function t(code?: string): string {

@@ -1,0 +1,10 @@
+{
+  "type": "command",
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "target": "AQ01",
+  "command": "BURNER_START",
+  "value": null,
+  "user": "Pedro",
+  "role": "Operator",
+  "reason": "S/N"
+}

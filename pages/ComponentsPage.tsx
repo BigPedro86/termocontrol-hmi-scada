@@ -112,7 +112,7 @@ export const ComponentsPage: React.FC = () => {
                 label="PARTIR" 
                 variant="start" 
                 disabled 
-                blockReasonCode={null ?? "Sem comunicação com o controlador"} 
+                blockReasonCode={"Sem comunicação com o controlador"} 
                 onClick={() => {}} 
               />
               <CommandButton 

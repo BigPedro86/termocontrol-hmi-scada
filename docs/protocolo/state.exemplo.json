@@ -1,0 +1,79 @@
+{
+  "type": "state",
+  "seq": 1005,
+  "uptime_s": 3600,
+  "estopOk": true,
+  "buzzer": {
+    "on": false,
+    "silenced": false
+  },
+  "heaters": [
+    {
+      "id": "AQ01",
+      "burner": {
+        "phase": "STANDBY",
+        "phaseTime_s": 120,
+        "starts": 10,
+        "permission": true,
+        "requested": true,
+        "blockReasons": [],
+        "lockout": false,
+        "lockoutCount24h": 0,
+        "runHours": 500
+      },
+      "temp": { "value": 60.5, "quality": "OK" },
+      "press": { "value": 1.2, "quality": "OK" },
+      "novus": {
+        "commOk": true,
+        "pv": 60.5,
+        "sp": 60.0,
+        "mv": 0.0,
+        "auto": true,
+        "alarms": [false, false],
+        "quality": "OK"
+      },
+      "pump": {
+        "cmd": true,
+        "fb": true,
+        "fault": false
+      },
+      "io": {
+        "lockoutS": false,
+        "gasValves": false,
+        "fan": false,
+        "chainOk": true,
+        "pumpFb": true,
+        "permOut": true,
+        "pumpOut": true,
+        "pressmA": 12.5
+      },
+      "chainOk": true
+    }
+  ],
+  "tank": {
+    "levelNormal": true,
+    "pressureLow": false,
+    "pumpCmd": false,
+    "pumpFb": false,
+    "isAuto": true,
+    "isLatched": false,
+    "lowLevelLatched": false,
+    "timeoutLatched": false,
+    "pumpFault": false,
+    "startsLastHour": 2
+  },
+  "alarms": [
+    {
+      "code": "TEMP_H",
+      "severity": "H",
+      "active": false,
+      "acked": true,
+      "since": 3500
+    }
+  ],
+  "allowedActions": {
+    "AQ01": ["BURNER_STOP", "PUMP_STOP", "FAULT_RESET"],
+    "TX01": ["TX01_PUMP_STOP"],
+    "SYS": ["ALARM_SILENCE", "ALARM_ACK"]
+  }
+}

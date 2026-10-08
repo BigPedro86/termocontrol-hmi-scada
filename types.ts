@@ -20,11 +20,12 @@ export function qualityLabel(q: MeasurementQuality | undefined): string | null {
 }
 
 // ─── Fases do queimador (deduzidas de FAN, GAS_VALVES, LOCKOUT) ────────────
-export type BurnerPhase = 'OFF' | 'WAIT_PUMP' | 'PURGE' | 'RUNNING' | 'POST_PURGE' | 'LOCKOUT';
+export type BurnerPhase = 'OFF' | 'WAIT_PUMP' | 'STANDBY' | 'PURGE' | 'RUNNING' | 'POST_PURGE' | 'LOCKOUT';
 
 export const BURNER_PHASE_LABEL: Record<BurnerPhase, string> = {
   OFF:        'Parado',
   WAIT_PUMP:  'Aguardando Bomba',
+  STANDBY:    'Em espera',
   PURGE:      'Purga',
   RUNNING:    'Queimando',
   POST_PURGE: 'Pós-purga',
@@ -34,6 +35,8 @@ export const BURNER_PHASE_LABEL: Record<BurnerPhase, string> = {
 // ─── Modelo do queimador ────────────────────────────────────────────────────
 export interface BurnerState {
   phase: BurnerPhase;
+  phaseTime_s: number;
+  starts: number;
   permission: boolean;
   requested: boolean;
   blockReasons: string[];
@@ -67,7 +70,17 @@ export interface HeaterState {
   temp: Measurement;
   press: Measurement;
   novus: NovusState;
-  pump: { cmd: boolean; fb: boolean };
+  pump: { cmd: boolean; fb: boolean; fault: boolean };
+  io: { 
+    lockoutS: boolean; 
+    gasValves: boolean; 
+    fan: boolean; 
+    chainOk: boolean; 
+    pumpFb: boolean; 
+    permOut: boolean; 
+    pumpOut: boolean; 
+    pressmA: number; 
+  };
   chainOk: boolean;
 }
 
@@ -80,6 +93,10 @@ export interface TankState {
   pumpFb: boolean;
   isAuto: boolean;
   isLatched: boolean;
+  lowLevelLatched: boolean;
+  timeoutLatched: boolean;
+  pumpFault: boolean;
+  startsLastHour: number;
   name?: string;
 }
 
@@ -134,4 +151,6 @@ export interface AppSettings {
   endpoint: string;
   updateInterval: number;
   supervisorOnly: boolean;
+  theme?: 'light' | 'dark';
+  useSimulation?: boolean;
 }

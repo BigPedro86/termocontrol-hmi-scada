@@ -35,9 +35,9 @@ unsigned long lastLogicUpdate = 0;
 void sendAck(const std::string& id, bool accepted, const std::string& reason) {
     JsonDocument doc;
     doc["type"] = "ack";
-    doc["payload"]["id"] = id;
-    doc["payload"]["accepted"] = accepted;
-    doc["payload"]["reason"] = reason;
+    doc["id"] = id;
+    doc["accepted"] = accepted;
+    doc["reason"] = reason;
     
     std::string out;
     serializeJson(doc, out);
@@ -64,12 +64,12 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         }
 
         if (doc["type"] == "command") {
-            std::string id = doc["payload"]["id"] | "";
-            std::string target = doc["payload"]["target"] | "";
-            std::string command = doc["payload"]["command"] | "";
-            std::string user = doc["payload"]["user"] | "";
-            std::string role = doc["payload"]["role"] | "";
-            std::string reason = doc["payload"]["reason"] | "";
+            std::string id = doc["id"] | "";
+            std::string target = doc["target"] | "";
+            std::string command = doc["command"] | "";
+            std::string user = doc["user"] | "";
+            std::string role = doc["role"] | "";
+            std::string reason = doc["reason"] | "";
             
             CommandResult r = {false, "UNKNOWN_TARGET"};
             if (target == "AQ01") {
@@ -212,26 +212,89 @@ void loop() {
         lastStateSent = now;
         JsonDocument doc;
         doc["type"] = "state";
-        doc["payload"]["uptime_s"] = now / 1000;
-        doc["payload"]["estopOk"] = in1.estopOk;
+        doc["seq"] = now;
+        doc["uptime_s"] = now / 1000;
+        doc["estopOk"] = in1.estopOk;
         
-        JsonArray heaters = doc["payload"]["heaters"].to<JsonArray>();
+        JsonObject buzzer = doc["buzzer"].to<JsonObject>();
+        buzzer["on"] = alarms.hasCriticalAlarms();
+        buzzer["silenced"] = false;
+        
+        JsonArray heaters = doc["heaters"].to<JsonArray>();
+        
+        auto addHeater = [&](JsonObject& h, const char* id, BurnerLogic& burner, PumpLogic& pump, HeaterInputs& in, int hwIndex) {
+            h["id"] = id;
+            h["name"] = id;
+            
+            JsonObject b = h["burner"].to<JsonObject>();
+            switch(burner.getPhase()) {
+                case Phase::OFF: b["phase"] = "OFF"; break;
+                case Phase::WAIT_PUMP: b["phase"] = "WAIT_PUMP"; break;
+                case Phase::STANDBY: b["phase"] = "STANDBY"; break;
+                case Phase::PURGE: b["phase"] = "PURGE"; break;
+                case Phase::RUNNING: b["phase"] = "RUNNING"; break;
+                case Phase::POST_PURGE: b["phase"] = "POST_PURGE"; break;
+                case Phase::LOCKOUT: b["phase"] = "LOCKOUT"; break;
+            }
+            b["phaseTime_s"] = burner.getPhaseTime();
+            b["starts"] = burner.getStarts();
+            b["permission"] = burner.getPermission();
+            b["requested"] = burner.getRequested();
+            b["lockout"] = in.lockout;
+            b["lockoutCount24h"] = burner.getLockouts24h();
+            b["runHours"] = burner.getRunHours();
+            JsonArray reasons = b["blockReasons"].to<JsonArray>();
+            for(const auto& r : burner.getBlockReasons()) {
+                reasons.add(r);
+            }
+            
+            JsonObject t = h["temp"].to<JsonObject>();
+            if (in.temp.quality == Quality::OK) t["value"] = in.temp.value; else t["value"] = nullptr;
+            t["quality"] = in.temp.quality == Quality::OK ? "OK" : (in.temp.quality == Quality::FAULT ? "FAULT" : "COMM_LOST");
+            
+            JsonObject p = h["press"].to<JsonObject>();
+            if (in.press.quality == Quality::OK) p["value"] = in.press.value; else p["value"] = nullptr;
+            p["quality"] = in.press.quality == Quality::OK ? "OK" : (in.press.quality == Quality::FAULT ? "FAULT" : "COMM_LOST");
+            
+            JsonObject n = h["novus"].to<JsonObject>();
+            n["commOk"] = in.novus.commOk;
+            if (in.novus.commOk) {
+                n["pv"] = hal.getNovusPV(hwIndex);
+                n["sp"] = hal.getNovusSV(hwIndex);
+                n["mv"] = hal.getNovusMV(hwIndex);
+            } else {
+                n["pv"] = nullptr; n["sp"] = nullptr; n["mv"] = nullptr;
+            }
+            n["auto"] = true;
+            JsonArray nAlarms = n["alarms"].to<JsonArray>();
+            nAlarms.add(false); nAlarms.add(false);
+            n["quality"] = in.novus.quality == Quality::OK ? "OK" : "COMM_LOST";
+            
+            JsonObject pObj = h["pump"].to<JsonObject>();
+            pObj["cmd"] = pump.getCmd();
+            pObj["fb"] = in.pumpFb;
+            pObj["fault"] = pump.isFault();
+            
+            JsonObject io = h["io"].to<JsonObject>();
+            io["lockoutS"] = in.lockout;
+            io["gasValves"] = in.gasValves;
+            io["fan"] = in.fan;
+            io["chainOk"] = in.chainOk;
+            io["pumpFb"] = in.pumpFb;
+            io["permOut"] = burner.getPermission();
+            io["pumpOut"] = pump.getCmd();
+            io["pressmA"] = 12.0; // MOCK ⚠ VALIDAR NO EQUIPAMENTO
+            
+            h["chainOk"] = in.chainOk;
+        };
+        
         JsonObject h1 = heaters.add<JsonObject>();
-        h1["id"] = "AQ01";
-        h1["phase"] = (int)burner1.getPhase();
-        h1["temp"] = in1.temp.value;
-        h1["pressure"] = in1.press.value;
-        h1["pumpFb"] = in1.pumpFb;
+        addHeater(h1, "AQ01", burner1, pump1, in1, 0);
         
         JsonObject h2 = heaters.add<JsonObject>();
-        h2["id"] = "AQ02";
-        h2["phase"] = (int)burner2.getPhase();
-        h2["temp"] = in2.temp.value;
-        h2["pressure"] = in2.press.value;
-        h2["pumpFb"] = in2.pumpFb;
+        addHeater(h2, "AQ02", burner2, pump2, in2, 1);
         
-        // Tank TX01
-        JsonObject tObj = doc["payload"]["tank"].to<JsonObject>();
+        JsonObject tObj = doc["tank"].to<JsonObject>();
         TankState ts = tx01.getState();
         tObj["id"] = "TX01";
         tObj["levelNormal"] = ts.levelNormal;
@@ -240,21 +303,37 @@ void loop() {
         tObj["pumpFb"] = ts.pumpFb;
         tObj["isAuto"] = ts.isAuto;
         tObj["isLatched"] = ts.isLatched;
+        tObj["lowLevelLatched"] = ts.lowLevelLatched;
+        tObj["timeoutLatched"] = ts.timeoutLatched;
+        tObj["pumpFault"] = ts.pumpFault;
+        tObj["startsLastHour"] = ts.startsLastHour;
         
-        // Allowed Actions
-        JsonObject actions = doc["payload"]["allowedActions"].to<JsonObject>();
-        // Very basic mapping for frontend
-        // ... (can be extended using CommandHandler::getAllowedActions)
+        JsonObject actions = doc["allowedActions"].to<JsonObject>();
+        auto act1 = CommandHandler::getAllowedActions("AQ01", &burner1, &pump1, nullptr);
+        JsonArray arr1 = actions["AQ01"].to<JsonArray>();
+        for(const auto& a : act1) arr1.add(a);
         
-        JsonArray alArr = doc["payload"]["alarms"].to<JsonArray>();
+        auto act2 = CommandHandler::getAllowedActions("AQ02", &burner2, &pump2, nullptr);
+        JsonArray arr2 = actions["AQ02"].to<JsonArray>();
+        for(const auto& a : act2) arr2.add(a);
+        
+        auto actT = CommandHandler::getAllowedActions("TX01", nullptr, nullptr, &tx01);
+        JsonArray arrT = actions["TX01"].to<JsonArray>();
+        for(const auto& a : actT) arrT.add(a);
+        
+        JsonArray arrS = actions["SYS"].to<JsonArray>();
+        arrS.add("ALARM_SILENCE");
+        arrS.add("ALARM_ACK");
+        
+        JsonArray alArr = doc["alarms"].to<JsonArray>();
         for (const auto& a : alarms.getAlarms()) {
             if (a.active || a.latched) {
                 JsonObject alObj = alArr.add<JsonObject>();
                 alObj["code"] = a.code;
-                alObj["description"] = a.description;
-                alObj["active"] = a.active;
-                alObj["latched"] = a.latched;
                 alObj["severity"] = std::string(1, a.severity);
+                alObj["active"] = a.active;
+                alObj["acked"] = a.acked;
+                alObj["since"] = a.since;
             }
         }
         

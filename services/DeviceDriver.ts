@@ -1,6 +1,10 @@
 import { HeaterState, TankState, GLPState, AllowedActions, CommandAck, Alarm } from '@/types';
 
 export interface SystemState {
+  seq?: number;
+  uptime_s?: number;
+  estopOk?: boolean;
+  buzzer?: { on: boolean; silenced: boolean };
   heaters: HeaterState[];
   tank: TankState;
   glp: GLPState;

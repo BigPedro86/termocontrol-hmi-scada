@@ -7,9 +7,10 @@ interface CommandButtonProps {
   disabled?: boolean;
   blockReasonCode?: string;
   onClick: () => void;
+  isConfirmed?: boolean;
 }
 
-export const CommandButton: React.FC<CommandButtonProps> = ({ label, variant, disabled, blockReasonCode, onClick }) => {
+export const CommandButton: React.FC<CommandButtonProps> = ({ label, variant, disabled, blockReasonCode, onClick, isConfirmed }) => {
   const isStop = variant === 'stop';
 
   if (isStop) {
@@ -18,9 +19,9 @@ export const CommandButton: React.FC<CommandButtonProps> = ({ label, variant, di
         <button 
           type="button" 
           onClick={onClick}
-          className="h-12 rounded-lg border-0 bg-tc-stop text-white text-sm font-bold tracking-wider cursor-pointer active:opacity-80"
+          className={`h-12 rounded-lg border-0 text-white text-sm font-bold tracking-wider cursor-pointer active:opacity-80 ${isConfirmed ? 'bg-tc-equip-off border-2 border-tc-text-muted opacity-80' : 'bg-tc-stop'}`}
         >
-          {label}
+          {isConfirmed ? 'PARADA CONFIRMADA' : label}
         </button>
       </div>
     );

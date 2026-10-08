@@ -151,14 +151,15 @@ const HeaterDetail: React.FC = () => {
                <CommandButton 
                   variant="start"
                   label="LIGAR BOMBA"
-                  disabled={lockCommands || !actions.includes('turn_on')}
-                  onClick={() => handleCommand('pumpCmd', true)}
+                  disabled={lockCommands || !actions.includes('PUMP_START')}
+                  onClick={() => handleCommand('PUMP_START', null)}
                />
                <CommandButton 
                   variant="stop"
                   label="DESLIGAR BOMBA"
-                  disabled={lockCommands || !actions.includes('turn_off')}
-                  onClick={() => handleCommand('pumpCmd', false)}
+                  disabled={lockCommands || !actions.includes('PUMP_STOP')}
+                  onClick={() => handleCommand('PUMP_STOP', null)}
+                  isConfirmed={!heater.pump.cmd && !heater.pump.fb}
                />
                
                <hr className="border-tc-border my-2" />
@@ -166,14 +167,15 @@ const HeaterDetail: React.FC = () => {
                <CommandButton 
                   variant="start"
                   label="LIBERAR QUEIMADOR"
-                  disabled={lockCommands || !actions.includes('burner_enable')}
-                  onClick={() => handleCommand('burnerPermission', true)}
+                  disabled={lockCommands || !actions.includes('BURNER_START')}
+                  onClick={() => handleCommand('BURNER_START', null)}
                />
                <CommandButton 
                   variant="stop"
                   label="BLOQUEAR QUEIMADOR"
-                  disabled={lockCommands || !actions.includes('burner_disable')}
-                  onClick={() => handleCommand('burnerPermission', false)}
+                  disabled={lockCommands || !actions.includes('BURNER_STOP')}
+                  onClick={() => handleCommand('BURNER_STOP', null)}
+                  isConfirmed={!heater.burner.requested && !heater.burner.permission && !heater.io.gasValves}
                />
             </div>
             
@@ -182,6 +184,19 @@ const HeaterDetail: React.FC = () => {
                 <span className="label text-tc-action animate-pulse">AGUARDANDO CONFIRMAÇÃO...</span>
               </div>
             )}
+          </Card>
+
+          <Card title="SINAIS DE CAMPO" className="h-max">
+            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm font-semibold tracking-wide text-tc-text-dim">
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>lockoutS:</span> <span>{heater.io.lockoutS ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>gasValves:</span> <span>{heater.io.gasValves ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>fan:</span> <span>{heater.io.fan ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>chainOk:</span> <span>{heater.io.chainOk ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>pumpFb:</span> <span>{heater.io.pumpFb ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>permOut:</span> <span>{heater.io.permOut ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>pumpOut:</span> <span>{heater.io.pumpOut ? '1' : '0'}</span></div>
+              <div className="flex justify-between border-b border-tc-border pb-1"><span>pressmA:</span> <span>{heater.io.pressmA?.toFixed(1)}</span></div>
+            </div>
           </Card>
         </div>
       </div>

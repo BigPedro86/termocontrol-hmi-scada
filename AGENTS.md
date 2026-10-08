@@ -110,7 +110,7 @@ Consulte também `docs/PROTOCOLO.md` para campos detalhados.
 
 | type | payload | Descrição |
 |------|---------|-----------|
-| `state` | `{ seq, uptime_s, estopOk, heaters[], alarms[], allowedActions{} }` | Estado atual completo, alarmes em tempo real e lista de ações permitidas (ver `docs/PROTOCOLO.md`) |
+| `state` | `{ seq, uptime_s, estopOk, buzzer{}, heaters[], tank{}, alarms[], allowedActions{} }` | Estado atual completo (plano), alarmes em tempo real e lista de ações permitidas (ver `docs/PROTOCOLO.md`) |
 | `ack` | `{ id, accepted, reason }` | Resposta imediata do ESP32 para cada `command` |
 
 ## Regras de Negócio Críticas

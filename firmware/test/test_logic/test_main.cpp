@@ -684,11 +684,15 @@ void test_plant_nivel_baixo_pressao_ll_bomba_desliga_na_hora() {
 }
 
 void test_plant_nivel_normaliza_rearme() {
-    PlantLogic plant; TankLogic tx; BurnerLogic b1, b2; PumpLogic p1, p2;
-    HeaterInputs in1 = get_default_inputs(); in1.cmd_start = false;
-    HeaterInputs in2 = get_default_inputs(); in2.cmd_start = false;
+    PlantLogic plant; TankLogic tx; BurnerLogic b1(0, nullptr), b2(1, nullptr); PumpLogic p1, p2;
+    HeaterInputs in1 = get_default_inputs();
+    HeaterInputs in2 = get_default_inputs();
     
-    in1.cmd_start = true; in2.cmd_start = true;
+    CommandHandler::handleCommand("AQ01", "PUMP_START", "Operator", &b1, &p1, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ02", "PUMP_START", "Operator", &b2, &p2, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "Operator", &b1, &p1, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ02", "BURNER_START", "Operator", &b2, &p2, nullptr, nullptr);
+    
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
     
     TankInputs tin = {false, false, true, false, false, false};
@@ -697,8 +701,14 @@ void test_plant_nivel_normaliza_rearme() {
     
     TEST_ASSERT_FALSE(b1.getPermission());
     
+    // Tentativa de rearme com nível ainda baixo
+    CommandResult res = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Maintenance", nullptr, nullptr, &tx, nullptr);
+    TEST_ASSERT_FALSE(res.accepted);
+    TEST_ASSERT_EQUAL_STRING("TANK_LEVEL_STILL_LOW", res.reason.c_str());
+    
     // Nível normaliza, mas sem rearme
     tin.levelNormal = true;
+    in1.press.value = 2.0f; // Restore pressure!
     tx.update(tin, 1.0f, nullptr);
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
     
@@ -706,18 +716,20 @@ void test_plant_nivel_normaliza_rearme() {
     
     // Rearme
     CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Maintenance", nullptr, nullptr, &tx, nullptr);
+    tx.update(tin, 1.0f, nullptr);
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
     
     // After reset, it still needs cmd_start edge (BURNER_START)
     TEST_ASSERT_FALSE(b1.getPermission());
     
     // Trigger start edge
-    in1.cmd_start = false;
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "Operator", &b1, &p1, nullptr, nullptr);
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
-    in1.cmd_start = true;
+    
+    in1.pumpFb = true;
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
     
-    TEST_ASSERT_TRUE(b1.getPermission());
+    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b1.getPhase());
 }
 
 int main(int argc, char **argv) {
