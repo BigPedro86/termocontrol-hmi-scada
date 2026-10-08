@@ -26,7 +26,7 @@ const rl = readline.createInterface({
     if ((rl as any).stdoutMuted && stringToWrite !== '\n' && stringToWrite !== '\r\n') {
         // mutado
     } else {
-        rl.output.write(stringToWrite);
+        (rl as any).output.write(stringToWrite);
     }
 };
 
