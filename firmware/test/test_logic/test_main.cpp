@@ -294,7 +294,7 @@ void test_n9_start_liga_bomba_e_sequencia() {
     HeaterInputs in = get_default_inputs();
     
     CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
-    p.update(false, false, false, false, 1.0f);
+    p.update(b.getRequested(), false, false, false, in.pumpFb, 1.0f);
     TEST_ASSERT_TRUE(b.getRequested());
     TEST_ASSERT_TRUE(p.getCmd());
     
@@ -420,22 +420,22 @@ void test_reset_limite_invalido() {
 
 void test_bomba_pos_purga() {
     PumpLogic p(3.0f); // 3 seconds post-purge
-    p.update(true, false, false, true, 1.0f);
+    p.update(true, false, false, false, true, 1.0f);
     TEST_ASSERT_TRUE(p.getCmd());
     
-    p.update(false, false, false, true, 1.0f); // remove start cmd
+    p.update(false, false, false, false, true, 1.0f); // remove start cmd
     TEST_ASSERT_TRUE(p.getCmd()); // still true because of timer
     
-    p.update(false, false, false, true, 3.0f); // wait
+    p.update(false, false, false, false, true, 3.0f); // wait
     TEST_ASSERT_FALSE(p.getCmd()); // false now
 }
 
 void test_bomba_falha_sem_fb() {
     PumpLogic p(3.0f);
-    p.update(true, false, false, false, 1.0f); // start cmd, no fb
+    p.update(true, false, false, false, false, 1.0f); // start cmd, no fb
     TEST_ASSERT_TRUE(p.getCmd());
     
-    p.update(true, false, false, false, 6.0f); // >5s
+    p.update(true, false, false, false, false, 6.0f); // >5s
     TEST_ASSERT_FALSE(p.getCmd());
     TEST_ASSERT_TRUE(p.isFault());
 }
@@ -550,6 +550,54 @@ void test_parada_24h_religa() {
     b.update(in, 1.0f);
     TEST_ASSERT_TRUE(b.getPermission());
     TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b.getPhase());
+}
+
+void test_n10_start_recusado_nao_liga_bomba() {
+    BurnerLogic b;
+    PumpLogic p;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false; // Add this!
+    in.estopOk = false;
+    b.update(in, 1.0f);
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    TEST_ASSERT_FALSE(b.getRequested());
+    
+    p.update(b.getRequested(), false, false, false, false, 1.0f);
+    TEST_ASSERT_FALSE(p.getCmd());
+}
+
+void test_n10_stop_queimador_bomba_pos_circulacao() {
+    BurnerLogic b;
+    PumpLogic p(30.0f);
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    TEST_ASSERT_TRUE(b.getRequested());
+    
+    p.update(b.getRequested(), false, false, false, false, 1.0f);
+    TEST_ASSERT_TRUE(p.getCmd());
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, &p, nullptr, nullptr);
+    TEST_ASSERT_FALSE(b.getRequested());
+    
+    p.update(b.getRequested(), false, false, false, false, 1.0f);
+    TEST_ASSERT_TRUE(p.getCmd()); 
+    
+    p.update(b.getRequested(), false, false, false, false, 35.0f);
+    TEST_ASSERT_FALSE(p.getCmd());
+}
+
+void test_n10_bomba_manual_independente() {
+    BurnerLogic b;
+    PumpLogic p;
+    
+    CommandHandler::handleCommand("AQ01", "PUMP_START", "", "Operator", &b, &p, nullptr, nullptr);
+    p.update(false, false, false, false, false, 1.0f);
+    TEST_ASSERT_TRUE(p.getCmd());
+    
+    CommandHandler::handleCommand("AQ01", "PUMP_STOP", "", "Operator", &b, &p, nullptr, nullptr);
+    p.update(false, false, false, false, false, 1.0f);
+    TEST_ASSERT_FALSE(p.getCmd());
 }
 
 void test_n7_discrepancy_persists_after_stop() {
@@ -1099,6 +1147,9 @@ int main(int argc, char **argv) {
     RUN_TEST(test_sensor_fault_sem_limites);
     RUN_TEST(test_parada_24h_religa);
     RUN_TEST(test_n7_discrepancy_persists_after_stop);
+    RUN_TEST(test_n10_start_recusado_nao_liga_bomba);
+    RUN_TEST(test_n10_stop_queimador_bomba_pos_circulacao);
+    RUN_TEST(test_n10_bomba_manual_independente);
     RUN_TEST(test_paradas_comportamentos);
     RUN_TEST(test_conversao_4_20ma);
     RUN_TEST(test_reset_limite_invalido);

@@ -57,7 +57,6 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
                 }
                 bLogic->startBurner();
             }
-            if (pLogic) pLogic->startPump();
             return {true, "START_ACCEPTED"};
         }
         return {false, "UNAUTHORIZED_ROLE"};

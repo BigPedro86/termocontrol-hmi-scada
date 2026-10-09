@@ -17,9 +17,12 @@ void PlantLogic::update(BurnerLogic& b1, BurnerLogic& b2,
     b1.update(in1, dt);
     b2.update(in2, dt);
     
-    bool forceStop1 = in1.press.value < minPressure;
-    bool forceStop2 = in2.press.value < minPressure;
+    bool forceStop1 = in1.press.value < minPressure || !in1.estopOk || !in1.chainOk;
+    bool forceStop2 = in2.press.value < minPressure || !in2.estopOk || !in2.chainOk;
     
-    p1.update(b1.getRequested(), false, forceStop1, in1.pumpFb, dt);
-    p2.update(b2.getRequested(), false, forceStop2, in2.pumpFb, dt);
+    bool lockStart1 = tx01.isLowLevel();
+    bool lockStart2 = tx01.isLowLevel();
+    
+    p1.update(b1.getRequested(), false, forceStop1, lockStart1, in1.pumpFb, dt);
+    p2.update(b2.getRequested(), false, forceStop2, lockStart2, in2.pumpFb, dt);
 }

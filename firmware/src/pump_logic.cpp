@@ -11,15 +11,16 @@ void PumpLogic::startPump() {
 void PumpLogic::stopPump() {
     requested = false;
     fault = false;
+    postPurgeTimer = 0.0f;
 }
 
-void PumpLogic::update(bool startCmd, bool stopCmd, bool forceStop, bool fb, float deltaTimeS) {
+void PumpLogic::update(bool burnerReq, bool stopCmd, bool forceStop, bool lockStart, bool fb, float deltaTimeS) {
     if (stopCmd) {
         requested = false;
         fault = false; // reset fault on STOP
     }
     
-    bool active = requested || startCmd;
+    bool active = (requested || burnerReq) && !lockStart;
     if (stopCmd) {
         active = false; // STOP overrides all
     }
