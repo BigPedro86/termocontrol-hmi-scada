@@ -309,11 +309,13 @@ void HAL_ESP32::pollModbus() {
     uint32_t now = millis();
     
     // Check timeout for both
+    portENTER_CRITICAL(&modbusMux);
     for (int h = 0; h < 2; h++) {
         if (now - modbusData[h].lastSuccessTime > config.modbusTimeoutMs) {
             modbusData[h].commOk = false;
         }
     }
+    portEXIT_CRITICAL(&modbusMux);
 
     if (now - lastModbusPoll < 1000) return;
     
