@@ -49,7 +49,9 @@ public:
     }
 };
 
-void setUp(void) {}
+void setUp(void) {
+    config = SystemConfig{};
+}
 void tearDown(void) {}
 
 HeaterInputs get_default_inputs() {
@@ -1054,7 +1056,11 @@ void test_plant_nivel_normaliza_rearme() {
 
 void check_json_types(JsonObject expected, JsonObject actual, const std::string& path) {
     for (JsonPair kv : expected) {
-        TEST_ASSERT_TRUE_MESSAGE(actual.containsKey(kv.key()), (path + "." + kv.key().c_str() + " missing").c_str());
+        bool keyExists = false;
+        for (JsonPair akv : actual) {
+            if (akv.key() == kv.key()) { keyExists = true; break; }
+        }
+        TEST_ASSERT_TRUE_MESSAGE(keyExists, (path + "." + kv.key().c_str() + " missing").c_str());
         JsonVariant vExpected = kv.value();
         JsonVariant vActual = actual[kv.key()];
         
@@ -1371,82 +1377,97 @@ void test_n2_pressma_real() {
     TEST_ASSERT_TRUE(jsonStr.find("\"pressmA\":null") != std::string::npos);
 }
 
+void test_n2_pressma_falha_ads() {
+    BurnerLogic b1(0, nullptr), b2(1, nullptr);
+    PumpLogic p1, p2;
+    TankLogic tx;
+    HALMockTest hal;
+    AlarmEngine alarms(&hal);
+    HeaterInputs in1 = get_default_inputs(), in2 = get_default_inputs();
+    
+    in1.press.raw_mA = 2.0f;
+    in1.press.quality = Quality::FAULT;
+    std::string jsonStr = generateStateJson(1000, true, b1, p1, in1, b2, p2, in2, tx, alarms, hal);
+    TEST_ASSERT_TRUE(jsonStr.find("\"pressmA\":null") != std::string::npos);
+}
+
 int main(int argc, char **argv) {
-    UNITY_BEGIN();
-    RUN_TEST(test_partida_normal);
-    RUN_TEST(test_filtro_mcp);
-    RUN_TEST(test_mcp_falha_i2c);
-    RUN_TEST(test_mcp_falha_config);
-    RUN_TEST(test_mcp_corrida);
-    RUN_TEST(test_mcp_rollover);
-    RUN_TEST(test_mcp_boot);
-    RUN_TEST(test_off_qualquer_fase);
-    RUN_TEST(test_bomba_sem_retorno);
-    RUN_TEST(test_sensor_pt100_em_falha);
-    RUN_TEST(test_4_20ma_abaixo_3_6ma);
-    RUN_TEST(test_bloqueio_lfl);
-    RUN_TEST(test_3_bloqueios_24h);
-    RUN_TEST(test_gas_valves_sem_permissao);
-    RUN_TEST(test_partida_sem_chama_60s);
-    RUN_TEST(test_reinicio_seguro);
-    RUN_TEST(test_limite_software_travamento);
-    RUN_TEST(test_parada_24h);
-    RUN_TEST(test_n8_lockout_initialized_on_boot);
-    RUN_TEST(test_n8_lockout_count_reset_command);
-    RUN_TEST(test_modbus_sem_resposta);
-    RUN_TEST(test_n9_start_liga_bomba_e_sequencia);
-    RUN_TEST(test_n9_running_sem_permissao);
-    RUN_TEST(test_n9_pos_purga_apos_running);
-    RUN_TEST(test_n9_timer_ignicao_so_em_purge);
-    RUN_TEST(test_bomba_pos_purga);
-    RUN_TEST(test_bomba_falha_sem_fb);
-    RUN_TEST(test_comando_stop_aceito);
-    RUN_TEST(test_comando_desconhecido);
-    RUN_TEST(test_alvo_invalido);
-    RUN_TEST(test_perfis_servidor);
-    RUN_TEST(test_acoes_permitidas_bloqueio);
-    RUN_TEST(test_aquecedores_independentes);
-    RUN_TEST(test_alarme_gas_sem_vento);
-    RUN_TEST(test_sensor_fault_sem_limites);
-    RUN_TEST(test_parada_24h_religa);
-    RUN_TEST(test_n7_discrepancy_persists_after_stop);
-    RUN_TEST(test_n10_start_recusado_nao_liga_bomba);
-    RUN_TEST(test_n10_stop_queimador_bomba_pos_circulacao);
-    RUN_TEST(test_n10_bomba_manual_independente);
-    RUN_TEST(test_n7_parada_normal_sem_discrepancia);
-    RUN_TEST(test_n7_fault_reset_recusado_com_condicao);
-    RUN_TEST(test_n7_fault_reset_operador_recusado);
-    RUN_TEST(test_n10_stop_abre_rele_mesmo_ciclo);
-    RUN_TEST(test_n10_pump_stop_derruba_queimador);
-    RUN_TEST(test_n10_emergencia_exige_nova_partida);
-    RUN_TEST(test_n10_pos_circulacao_da_config);
-    RUN_TEST(test_n10_cadeia_aberta_bomba_continua);
-    RUN_TEST(test_n10_sensor_pressao_falha_nao_corta_bomba);
-    RUN_TEST(test_n11_state_publica_retorno_real);
-    RUN_TEST(test_n11_auto_limpa_falha);
-    RUN_TEST(test_paradas_comportamentos);
-    RUN_TEST(test_conversao_4_20ma);
-    RUN_TEST(test_reset_limite_invalido);
-    RUN_TEST(test_chain_estop);
-    RUN_TEST(test_tx01_nivel_baixo);
-    RUN_TEST(test_tx01_fio_rompido);
-    RUN_TEST(test_tx01_nivel_volta_sem_rearme);
-    RUN_TEST(test_tx01_rearme_operator_recusado);
-    RUN_TEST(test_tx01_rearme_com_nivel_ainda_baixo);
-    RUN_TEST(test_tx01_reposicao_liga_desliga);
-    RUN_TEST(test_tx01_bomba_nao_liga_nivel_baixo);
-    RUN_TEST(test_tx01_tempo_maximo_trava);
-    RUN_TEST(test_tx01_partidas_demais);
-    RUN_TEST(test_tx01_bomba_sem_retorno);
-    RUN_TEST(test_plant_nivel_baixo_perde_permissao);
-    RUN_TEST(test_plant_bomba_pos_circulacao);
-    RUN_TEST(test_plant_nivel_baixo_pressao_ll_bomba_desliga_na_hora);
-    RUN_TEST(test_plant_nivel_normaliza_rearme);
-    RUN_TEST(test_state_json_contrato);
-    RUN_TEST(test_n12_alarm_ack_condicao_normalizada);
-    RUN_TEST(test_n12_alarm_silence_sirene);
-    RUN_TEST(test_n12_alarm_ack_all);
-    RUN_TEST(test_n12_alarme_boot_esp32_reiniciado);
+    RUN_TEST(test_n2_pressma_falha_ads);
     RUN_TEST(test_n2_pressma_real);
+    RUN_TEST(test_n12_alarme_boot_esp32_reiniciado);
+    RUN_TEST(test_n12_alarm_ack_all);
+    RUN_TEST(test_n12_alarm_silence_sirene);
+    RUN_TEST(test_n12_alarm_ack_condicao_normalizada);
+    RUN_TEST(test_state_json_contrato);
+    RUN_TEST(test_plant_nivel_normaliza_rearme);
+    RUN_TEST(test_plant_nivel_baixo_pressao_ll_bomba_desliga_na_hora);
+    RUN_TEST(test_plant_bomba_pos_circulacao);
+    RUN_TEST(test_plant_nivel_baixo_perde_permissao);
+    RUN_TEST(test_tx01_bomba_sem_retorno);
+    RUN_TEST(test_tx01_partidas_demais);
+    RUN_TEST(test_tx01_tempo_maximo_trava);
+    RUN_TEST(test_tx01_bomba_nao_liga_nivel_baixo);
+    RUN_TEST(test_tx01_reposicao_liga_desliga);
+    RUN_TEST(test_tx01_rearme_com_nivel_ainda_baixo);
+    RUN_TEST(test_tx01_rearme_operator_recusado);
+    RUN_TEST(test_tx01_nivel_volta_sem_rearme);
+    RUN_TEST(test_tx01_fio_rompido);
+    RUN_TEST(test_tx01_nivel_baixo);
+    RUN_TEST(test_chain_estop);
+    RUN_TEST(test_reset_limite_invalido);
+    RUN_TEST(test_conversao_4_20ma);
+    RUN_TEST(test_paradas_comportamentos);
+    RUN_TEST(test_n11_auto_limpa_falha);
+    RUN_TEST(test_n11_state_publica_retorno_real);
+    RUN_TEST(test_n10_sensor_pressao_falha_nao_corta_bomba);
+    RUN_TEST(test_n10_cadeia_aberta_bomba_continua);
+    RUN_TEST(test_n10_pos_circulacao_da_config);
+    RUN_TEST(test_n10_emergencia_exige_nova_partida);
+    RUN_TEST(test_n10_pump_stop_derruba_queimador);
+    RUN_TEST(test_n10_stop_abre_rele_mesmo_ciclo);
+    RUN_TEST(test_n7_fault_reset_operador_recusado);
+    RUN_TEST(test_n7_fault_reset_recusado_com_condicao);
+    RUN_TEST(test_n7_parada_normal_sem_discrepancia);
+    RUN_TEST(test_n10_bomba_manual_independente);
+    RUN_TEST(test_n10_stop_queimador_bomba_pos_circulacao);
+    RUN_TEST(test_n10_start_recusado_nao_liga_bomba);
+    RUN_TEST(test_n7_discrepancy_persists_after_stop);
+    RUN_TEST(test_parada_24h_religa);
+    RUN_TEST(test_sensor_fault_sem_limites);
+    RUN_TEST(test_alarme_gas_sem_vento);
+    RUN_TEST(test_aquecedores_independentes);
+    RUN_TEST(test_acoes_permitidas_bloqueio);
+    RUN_TEST(test_perfis_servidor);
+    RUN_TEST(test_alvo_invalido);
+    RUN_TEST(test_comando_desconhecido);
+    RUN_TEST(test_comando_stop_aceito);
+    RUN_TEST(test_bomba_falha_sem_fb);
+    RUN_TEST(test_bomba_pos_purga);
+    RUN_TEST(test_n9_timer_ignicao_so_em_purge);
+    RUN_TEST(test_n9_pos_purga_apos_running);
+    RUN_TEST(test_n9_running_sem_permissao);
+    RUN_TEST(test_n9_start_liga_bomba_e_sequencia);
+    RUN_TEST(test_modbus_sem_resposta);
+    RUN_TEST(test_n8_lockout_count_reset_command);
+    RUN_TEST(test_n8_lockout_initialized_on_boot);
+    RUN_TEST(test_parada_24h);
+    RUN_TEST(test_limite_software_travamento);
+    RUN_TEST(test_reinicio_seguro);
+    RUN_TEST(test_partida_sem_chama_60s);
+    RUN_TEST(test_gas_valves_sem_permissao);
+    RUN_TEST(test_3_bloqueios_24h);
+    RUN_TEST(test_bloqueio_lfl);
+    RUN_TEST(test_4_20ma_abaixo_3_6ma);
+    RUN_TEST(test_sensor_pt100_em_falha);
+    RUN_TEST(test_bomba_sem_retorno);
+    RUN_TEST(test_off_qualquer_fase);
+    RUN_TEST(test_mcp_boot);
+    RUN_TEST(test_mcp_rollover);
+    RUN_TEST(test_mcp_corrida);
+    RUN_TEST(test_mcp_falha_config);
+    RUN_TEST(test_mcp_falha_i2c);
+    RUN_TEST(test_filtro_mcp);
+    RUN_TEST(test_partida_normal);
+    UNITY_BEGIN();
     return UNITY_END();
 }

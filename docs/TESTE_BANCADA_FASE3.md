@@ -17,6 +17,7 @@
 - **Passo 2:** Verifique se as pressões indicam `FAULT` e se a cadeia de segurança indica `false`.
 - **Passo 3:** Verifique que os dois queimadores não partem (ou desligam se estavam rodando), apresentando o motivo de bloqueio `IO_MODULE_FAULT`.
 - **Passo 4:** Verifique no sistema a presença do alarme crítico `Falha de comunicação com módulo de E/S`.
+- **Passo 5:** Reconecte o MCP23017. Desconecte o SDA/SCL do ADS1115 com o ESP32 ligado → verifique se a pressão indica `FAULT`, o `pressmA` retorna `null`, a permissão é negada e o alarme de falha do sensor de pressão é ativado.
 
 ## 3. Teste do Modbus Assíncrono e Non-blocking Wi-Fi
 - **Passo 1:** Altere as credenciais Wi-Fi para um SSID que não existe ou desligue o roteador.

@@ -45,6 +45,6 @@ Nada deste sistema deve operar um queimador antes desta lista estar completa e a
 |---|---|---|---|---|---|---|
 | C1 | Perda do servidor ou do Wi-Fi | Queimadores param (STOP_BURNERS); bombas fazem pós-circulação | Continuar com a lógica local e o Novus | firmware/include/config.h:36 | | |
 | C2 | Sensor de pressão em falha | Queimador sem permissão; bomba mantida | Desligar a bomba | firmware/src/plant_logic.cpp:20 | | |
-| C3 | Cadeia de segurança aberta (TS ou IN) | Queimador para pelo hardware; o pedido continua e ele religa sozinho depois do rearme local | Exigir nova partida pela tela | firmware/src/plant_logic.cpp:21 | | |
-| C4 | Rearme local do LFL com pedido ativo | Religa sozinho pela sequência normal | Exigir nova partida pela tela | firmware/src/plant_logic.cpp:21 | | |
-| C5 | Emergência | Derruba os pedidos; exige nova partida depois de soltar | firmware/src/plant_logic.cpp:18 | — | | |
+| C3 | Cadeia de segurança aberta (TS ou IN) | Queimador para pelo hardware; o pedido continua e ele religa sozinho depois do rearme local | Exigir nova partida pela tela | firmware/src/burner_logic.cpp:196 | | |
+| C4 | Rearme local do LFL com pedido ativo | Religa sozinho pela sequência normal | Exigir nova partida pela tela | firmware/src/burner_logic.cpp:203 | | |
+| C5 | Emergência | Derruba os pedidos; exige nova partida depois de soltar | — | firmware/src/plant_logic.cpp:18 | | |

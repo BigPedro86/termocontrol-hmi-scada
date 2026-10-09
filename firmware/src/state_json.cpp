@@ -81,7 +81,7 @@ std::string generateStateJson(unsigned long now,
         io["pumpFb"] = in.pumpFb;
         io["permOut"] = burner.getPermission();
         io["pumpOut"] = pump.getCmd();
-        if (in.press.quality == Quality::COMM_LOST || in.ioModuleFault) {
+        if (in.press.quality == Quality::COMM_LOST || in.press.quality == Quality::FAULT || in.ioModuleFault) {
             io["pressmA"] = nullptr;
         } else {
             // Arredonda para 1 casa decimal (opcional) ou envia cru
