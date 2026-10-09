@@ -75,6 +75,7 @@
 // ==========================================
 // COMUNICAÇÃO MODBUS RTU (UART2)
 // ==========================================
+// PROVISÓRIO — responsável técnico define: TL pelo relé I/O1 do Novus.
 #define PIN_RS485_RX    16
 #define PIN_RS485_TX    17
 #define PIN_RS485_DE_RE 4

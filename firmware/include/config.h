@@ -10,13 +10,13 @@ enum BehaviorOnServerLoss {
 
 struct SystemConfig {
     // PROVISÓRIO - responsável técnico define
-    float tempSoftwareLimit = 90.0f; 
-    float minPressure = 1.0f;
+    float tempSoftwareLimit = 90.0f; // PROVISÓRIO — responsável técnico define (inclui pré-aviso em -5°C)
+    float minPressure = 1.0f; // PROVISÓRIO — responsável técnico define
     float maxPressure = 6.0f;
-    int pumpPostCirculationSec = 180;
+    int pumpPostCirculationSec = 180; // PROVISÓRIO — responsável técnico define
     int pumpFeedbackTimeoutSec = 5;
     int ignitionTimeoutSec = 60;
-    int maxLockouts24h = 3;
+    int maxLockouts24h = 3; // PROVISÓRIO — responsável técnico define
     float maxTempDivergence = 5.0f; // Diferença PT100 vs Modbus PV
     bool checkTempDivergence = false; // Desativado até confirmar medição
     int modbusTimeoutMs = 5000;
@@ -31,7 +31,7 @@ struct SystemConfig {
     float tankPumpMaxRunSec = 600.0f;
     int tankPumpMaxStartsHour = 10;
     
-    BehaviorOnServerLoss onServerLoss = STOP_BURNERS;
+    BehaviorOnServerLoss onServerLoss = STOP_BURNERS; // PROVISÓRIO — responsável técnico define
 
     // SCADA Server config
     std::string serverIp = "";

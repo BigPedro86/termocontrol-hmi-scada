@@ -1,8 +1,8 @@
 #include "pump_logic.h"
 #include "config.h"
 
-PumpLogic::PumpLogic(float postPurgeTimeS) : cmd(false), requested(false), fault(false),
-    noFbTimer(0), postPurgeTimer(0), postPurgeConfigS(postPurgeTimeS) {}
+PumpLogic::PumpLogic() : cmd(false), requested(false), fault(false),
+    noFbTimer(0), postPurgeTimer(0) {}
 
 void PumpLogic::startPump() {
     requested = true;
@@ -38,7 +38,7 @@ void PumpLogic::update(bool burnerReq, bool stopCmd, bool forceStop, bool lockSt
     
     if (active) {
         cmd = true;
-        postPurgeTimer = postPurgeConfigS;
+        postPurgeTimer = (float)config.pumpPostCirculationSec;
     } else {
         postPurgeTimer -= deltaTimeS;
         if (postPurgeTimer > 0.0f) {

@@ -17,7 +17,8 @@ void PlantLogic::update(BurnerLogic& b1, BurnerLogic& b2,
     b1.update(in1, dt);
     b2.update(in2, dt);
     
-    // Decisão provisória — responsável técnico confirma
+    // PROVISÓRIO — responsável técnico define (bomba mantida com o sensor de pressão em falha)
+    // PROVISÓRIO — responsável técnico define (cadeia aberta mantém o pedido do queimador, religa sozinho depois do rearme local do TS)
     bool forceStop1 = (in1.press.quality == Quality::OK && in1.press.value < minPressure) || !in1.estopOk;
     bool forceStop2 = (in2.press.quality == Quality::OK && in2.press.value < minPressure) || !in2.estopOk;
     

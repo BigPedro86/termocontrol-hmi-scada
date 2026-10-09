@@ -113,10 +113,10 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
     bool changed = false;
     while (!lockoutTimes.empty()) {
         uint32_t oldest = lockoutTimes.front();
-        if (currentEpoch >= oldest && (currentEpoch - oldest) > 86400) {
+        if (currentEpoch >= oldest && (currentEpoch - oldest) > config.continuousRunMaxSec) {
             lockoutTimes.erase(lockoutTimes.begin());
             changed = true;
-        } else if (currentEpoch < oldest && (oldest - currentEpoch) > 86400) {
+        } else if (currentEpoch < oldest && (oldest - currentEpoch) > config.continuousRunMaxSec) {
              // In case it was an epoch but now it's uptime, don't delete to be conservative.
              // Or if clock jumped back. We keep it.
              break;

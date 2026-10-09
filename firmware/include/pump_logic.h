@@ -3,7 +3,7 @@
 
 class PumpLogic {
 public:
-    PumpLogic(float postPurgeTimeS = 180.0f);
+    PumpLogic();
     
     void update(bool burnerReq, bool stopCmd, bool forceStop, bool lockStart, bool fb, float deltaTimeS);
     
@@ -19,5 +19,4 @@ private:
     bool fault;
     float noFbTimer;
     float postPurgeTimer;
-    float postPurgeConfigS;
 };

@@ -21,8 +21,8 @@
 HAL_ESP32 hal;
 BurnerLogic burner1(0, &hal);
 BurnerLogic burner2(1, &hal);
-PumpLogic pump1(300.0f); // 5 mins post-purge as example
-PumpLogic pump2(300.0f);
+PumpLogic pump1;
+PumpLogic pump2;
 TankLogic tx01;
 PlantLogic plant;
 AlarmEngine alarms(&hal);

@@ -178,7 +178,7 @@ void HAL_ESP32::begin() {
     RS485Serial.begin(9600, SERIAL_8N1, PIN_RS485_RX, PIN_RS485_TX);
     MB = new ModbusClientRTU(PIN_RS485_DE_RE);
     MB->begin(RS485Serial);
-    MB->setTimeout(300);
+    MB->setTimeout(config.modbusTimeoutMs);
     MB->onDataHandler([this](ModbusMessage response, uint32_t token) {
         int h = token - 1; // token 1 = AQ01, 2 = AQ02
         if (h >= 0 && h < 2) {
