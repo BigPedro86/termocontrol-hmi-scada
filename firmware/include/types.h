@@ -23,18 +23,19 @@ enum class Quality {
 struct SensorValue {
     float value;
     Quality quality;
+    float raw_mA;
 };
 
 inline SensorValue convert4_20mA(float mA, float minScale, float maxScale) {
     // NAMUR NE43 compliant fault detection
     if (mA < 3.6f || mA > 21.0f) {
-        return {0.0f, Quality::FAULT};
+        return {0.0f, Quality::FAULT, mA};
     }
     float clamped_mA = mA;
     if (clamped_mA < 4.0f) clamped_mA = 4.0f;
     if (clamped_mA > 20.0f) clamped_mA = 20.0f;
     float value = minScale + ((clamped_mA - 4.0f) / 16.0f) * (maxScale - minScale);
-    return {value, Quality::OK};
+    return {value, Quality::OK, mA};
 }
 
 struct AlarmsState {

@@ -168,6 +168,7 @@ void loop() {
     AnalogValue p1 = hal.getPressure(0);
     in1.press.value = p1.value;
     in1.press.quality = (Quality)p1.quality;
+    in1.press.raw_mA = p1.raw_mA;
     
     in1.novus.commOk = hal.isNovusCommOk(0);
     in1.novus.quality = in1.novus.commOk ? Quality::OK : Quality::COMM_LOST;
@@ -188,6 +189,7 @@ void loop() {
     AnalogValue p2 = hal.getPressure(1);
     in2.press.value = p2.value;
     in2.press.quality = (Quality)p2.quality;
+    in2.press.raw_mA = p2.raw_mA;
     in2.novus.commOk = hal.isNovusCommOk(1);
     in2.novus.quality = in2.novus.commOk ? Quality::OK : Quality::COMM_LOST;
     
@@ -208,7 +210,7 @@ void loop() {
     hal.setPumpCmd(0, pump1.getCmd());
     hal.setPumpCmd(1, pump2.getCmd());
     hal.setTx01PumpCmd(tx01.getState().pumpCmd);
-    hal.setBuzzer(alarms.hasCriticalAlarms());
+    hal.setBuzzer(alarms.isSirenOn());
 
     static bool wasServerConnected = false;
     if (wasServerConnected && !isServerConnected && config.onServerLoss == STOP_BURNERS) {

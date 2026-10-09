@@ -46,7 +46,7 @@ void AlarmEngine::process(int heaterIndex, float temp, float press, bool tempFau
     
     std::string prefix = "AQ0" + std::to_string(heaterIndex + 1) + "_";
 
-    float limitH = config.tempSoftwareLimit - 5.0f;
+    float limitH = config.tempWarnC;
     float limitHH = config.tempSoftwareLimit;
     bool tempH_cond = isAlarmActive(prefix + "TEMP_H") ? temp > (limitH - 1.0f) : temp >= limitH;
     bool tempHH_cond = isAlarmActive(prefix + "TEMP_HH") ? temp > (limitHH - 1.0f) : temp >= limitHH;
@@ -128,6 +128,13 @@ void AlarmEngine::cleanup() {
 }
 
 bool AlarmEngine::hasCriticalAlarms() const {
+    for (const auto& a : alarms) {
+        if (a.severity == 'C' && (!a.acked || a.active)) return true;
+    }
+    return false;
+}
+
+bool AlarmEngine::isSirenOn() const {
     if (silenced) return false;
     for (const auto& a : alarms) {
         if (a.severity == 'C' && !a.acked) return true;

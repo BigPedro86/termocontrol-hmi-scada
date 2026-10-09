@@ -38,7 +38,7 @@ void BurnerLogic::resetSoftwareLimit() {
 }
 
 bool BurnerLogic::canResetSwLimit() const {
-    return lastTemp < (lastSwLimit - 5.0f);
+    return lastTemp < (lastSwLimit - config.swLimitResetMarginC);
 }
 
 void BurnerLogic::resetLockoutCount() {
@@ -89,7 +89,7 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
     
     if (inputs.swLimitResetCmd || swLimitResetPending) {
         swLimitResetPending = false;
-        if (inputs.temp.value < inputs.swLimit - 5.0f) {
+        if (inputs.temp.value < inputs.swLimit - config.swLimitResetMarginC) {
             swLimitLatched = false;
         }
     }

@@ -32,11 +32,12 @@ public:
     bool getNovusA1(int h) override { return false; }
     bool getNovusA2(int h) override { return false; }
     bool getEStopOk() override { return true; }
-    AnalogValue getTemperature(int h) override { return {50.0f, SensorQuality::OK}; }
-    AnalogValue getPressure(int h) override { return {2.0f, SensorQuality::OK}; }
-    AnalogValue getNovusPV(int h) override { return {50.0f, SensorQuality::OK}; }
-    AnalogValue getNovusSV(int h) override { return {50.0f, SensorQuality::OK}; }
-    AnalogValue getNovusMV(int h) override { return {50.0f, SensorQuality::OK}; }
+    AnalogValue getTemperature(int h) override { return {50.0f, SensorQuality::OK, 0.0f}; }
+    AnalogValue mockPress = {2.0f, SensorQuality::OK, 12.0f};
+    AnalogValue getPressure(int h) override { return mockPress; }
+    AnalogValue getNovusPV(int h) override { return {50.0f, SensorQuality::OK, 0.0f}; }
+    AnalogValue getNovusSV(int h) override { return {50.0f, SensorQuality::OK, 0.0f}; }
+    AnalogValue getNovusMV(int h) override { return {50.0f, SensorQuality::OK, 0.0f}; }
     bool isNovusCommOk(int h) override { return true; }
     unsigned long millis() override { return timeMs; }
     void saveConfig(const std::string& k, const std::string& v) override {
@@ -290,7 +291,7 @@ void test_modbus_sem_resposta() {
 
 void test_n9_start_liga_bomba_e_sequencia() {
     BurnerLogic b;
-    PumpLogic p(10);
+    PumpLogic p;
     HeaterInputs in = get_default_inputs();
     
     CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
@@ -419,7 +420,9 @@ void test_reset_limite_invalido() {
 }
 
 void test_bomba_pos_purga() {
-    PumpLogic p(3.0f); // 3 seconds post-purge
+    int oldConfig = config.pumpPostCirculationSec;
+    config.pumpPostCirculationSec = 3;
+    PumpLogic p;
     p.update(true, false, false, false, true, 1.0f);
     TEST_ASSERT_TRUE(p.getCmd());
     
@@ -428,10 +431,11 @@ void test_bomba_pos_purga() {
     
     p.update(false, false, false, false, true, 3.0f); // wait
     TEST_ASSERT_FALSE(p.getCmd()); // false now
+    config.pumpPostCirculationSec = oldConfig;
 }
 
 void test_bomba_falha_sem_fb() {
-    PumpLogic p(3.0f);
+    PumpLogic p;
     p.update(true, false, false, false, false, 1.0f); // start cmd, no fb
     TEST_ASSERT_TRUE(p.getCmd());
     
@@ -569,7 +573,7 @@ void test_n10_start_recusado_nao_liga_bomba() {
 
 void test_n10_stop_queimador_bomba_pos_circulacao() {
     BurnerLogic b;
-    PumpLogic p(30.0f);
+    PumpLogic p;
     
     CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(b.getRequested());
@@ -691,7 +695,9 @@ void test_n10_emergencia_exige_nova_partida() {
 }
 
 void test_n10_pos_circulacao_da_config() {
-    PumpLogic p(45.0f);
+    int oldConfig = config.pumpPostCirculationSec;
+    config.pumpPostCirculationSec = 45;
+    PumpLogic p;
     p.update(true, false, false, false, true, 1.0f);
     p.update(false, false, false, false, true, 1.0f);
     TEST_ASSERT_TRUE(p.getCmd());
@@ -699,6 +705,7 @@ void test_n10_pos_circulacao_da_config() {
     TEST_ASSERT_TRUE(p.getCmd());
     p.update(false, false, false, false, true, 2.0f);
     TEST_ASSERT_FALSE(p.getCmd());
+    config.pumpPostCirculationSec = oldConfig;
 }
 
 void test_n10_cadeia_aberta_bomba_continua() {
@@ -1296,12 +1303,15 @@ void test_n12_alarm_silence_sirene() {
     AlarmEngine eng(&hal);
     eng.process(0, 50.0f, 1.0f, false, false, true, false, false, false, false, false); // Critical
     TEST_ASSERT_TRUE(eng.hasCriticalAlarms());
+    TEST_ASSERT_TRUE(eng.isSirenOn());
     
     eng.silenceSiren();
-    TEST_ASSERT_FALSE(eng.hasCriticalAlarms());
+    TEST_ASSERT_TRUE(eng.hasCriticalAlarms());
+    TEST_ASSERT_FALSE(eng.isSirenOn());
     
     eng.process(1, 50.0f, 1.0f, false, false, true, false, false, false, false, false); // New Critical
     TEST_ASSERT_TRUE(eng.hasCriticalAlarms());
+    TEST_ASSERT_TRUE(eng.isSirenOn());
 }
 
 void test_n12_alarm_ack_all() {
@@ -1341,6 +1351,24 @@ void test_n12_alarme_boot_esp32_reiniciado() {
         if(a.code == "SYS_ESP32_RESTART") found = true;
     }
     TEST_ASSERT_FALSE(found);
+}
+
+void test_n2_pressma_real() {
+    BurnerLogic b1(0, nullptr), b2(1, nullptr);
+    PumpLogic p1, p2;
+    TankLogic tx;
+    HALMockTest hal;
+    AlarmEngine alarms(&hal);
+    HeaterInputs in1 = get_default_inputs(), in2 = get_default_inputs();
+    
+    in1.press.raw_mA = 7.3f;
+    in1.press.quality = Quality::OK;
+    std::string jsonStr = generateStateJson(1000, true, b1, p1, in1, b2, p2, in2, tx, alarms, hal);
+    TEST_ASSERT_TRUE(jsonStr.find("\"pressmA\":7.3") != std::string::npos);
+    
+    in1.press.quality = Quality::COMM_LOST;
+    jsonStr = generateStateJson(1000, true, b1, p1, in1, b2, p2, in2, tx, alarms, hal);
+    TEST_ASSERT_TRUE(jsonStr.find("\"pressmA\":null") != std::string::npos);
 }
 
 int main(int argc, char **argv) {
@@ -1419,5 +1447,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_n12_alarm_silence_sirene);
     RUN_TEST(test_n12_alarm_ack_all);
     RUN_TEST(test_n12_alarme_boot_esp32_reiniciado);
+    RUN_TEST(test_n2_pressma_real);
     return UNITY_END();
 }

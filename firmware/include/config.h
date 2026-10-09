@@ -10,7 +10,9 @@ enum BehaviorOnServerLoss {
 
 struct SystemConfig {
     // PROVISÓRIO - responsável técnico define
-    float tempSoftwareLimit = 90.0f; // PROVISÓRIO — responsável técnico define (inclui pré-aviso em -5°C)
+    float tempSoftwareLimit = 90.0f; // PROVISÓRIO — responsável técnico define
+    float tempWarnC = 85.0f;
+    float swLimitResetMarginC = 5.0f;
     float minPressure = 1.0f; // PROVISÓRIO — responsável técnico define
     float maxPressure = 6.0f;
     int pumpPostCirculationSec = 180; // PROVISÓRIO — responsável técnico define

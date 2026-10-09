@@ -14,6 +14,7 @@ enum class SensorQuality {
 struct AnalogValue {
     float value;
     SensorQuality quality;
+    float raw_mA;
 };
 
 // Interface Abstrata para Hardware

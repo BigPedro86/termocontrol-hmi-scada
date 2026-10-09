@@ -38,7 +38,8 @@ public:
     void cleanup();
 
     const std::vector<AlarmDef>& getAlarms() const { return alarms; }
-    bool hasCriticalAlarms() const; // For siren
+    bool hasCriticalAlarms() const; 
+    bool isSirenOn() const;
 };
 
 #endif // ALARM_ENGINE_H

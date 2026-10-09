@@ -16,7 +16,7 @@ std::string generateStateJson(unsigned long now,
     doc["estopOk"] = in1.estopOk;
     
     JsonObject buzzer = doc["buzzer"].to<JsonObject>();
-    buzzer["on"] = alarms.hasCriticalAlarms();
+    buzzer["on"] = alarms.isSirenOn();
     buzzer["silenced"] = false;
     
     JsonArray heaters = doc["heaters"].to<JsonArray>();
@@ -81,7 +81,12 @@ std::string generateStateJson(unsigned long now,
         io["pumpFb"] = in.pumpFb;
         io["permOut"] = burner.getPermission();
         io["pumpOut"] = pump.getCmd();
-        io["pressmA"] = 12.0; // MOCK - VALIDAR NO EQUIPAMENTO
+        if (in.press.quality == Quality::COMM_LOST || in.ioModuleFault) {
+            io["pressmA"] = nullptr;
+        } else {
+            // Arredonda para 1 casa decimal (opcional) ou envia cru
+            io["pressmA"] = (int(in.press.raw_mA * 10.0f)) / 10.0f;
+        }
         
         h["chainOk"] = in.chainOk;
     };

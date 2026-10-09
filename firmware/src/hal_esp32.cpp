@@ -292,14 +292,14 @@ AnalogValue HAL_ESP32::getTemperature(int h) {
 }
 
 AnalogValue HAL_ESP32::getPressure(int h) {
-    if (mcpFilter.isIoFault() || h < 0 || h > 1) return {0.0f, SensorQuality::FAULT};
+    if (mcpFilter.isIoFault() || h < 0 || h > 1) return {0.0f, SensorQuality::COMM_LOST, 0.0f};
     xSemaphoreTake(i2cMutex, portMAX_DELAY);
     int16_t adc = ads.readADC_SingleEnded(h == 0 ? ADS_AQ01_PRESS : ADS_AQ02_PRESS);
     xSemaphoreGive(i2cMutex);
     float volts = (adc * 4.096f) / 32768.0f;
     float mA = (volts / 250.0f) * 1000.0f;
     SensorValue sv = convert4_20mA(mA, 0.0f, 10.0f);
-    return {sv.value, sv.quality == Quality::OK ? SensorQuality::OK : SensorQuality::FAULT};
+    return {sv.value, sv.quality == Quality::OK ? SensorQuality::OK : SensorQuality::FAULT, sv.raw_mA};
 }
 
 // ==========================================
