@@ -1392,6 +1392,7 @@ void test_n2_pressma_falha_ads() {
 }
 
 int main(int argc, char **argv) {
+    UNITY_BEGIN();
     RUN_TEST(test_n2_pressma_falha_ads);
     RUN_TEST(test_n2_pressma_real);
     RUN_TEST(test_n12_alarme_boot_esp32_reiniciado);
@@ -1468,6 +1469,5 @@ int main(int argc, char **argv) {
     RUN_TEST(test_mcp_falha_i2c);
     RUN_TEST(test_filtro_mcp);
     RUN_TEST(test_partida_normal);
-    UNITY_BEGIN();
     return UNITY_END();
 }
