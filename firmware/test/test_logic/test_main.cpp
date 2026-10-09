@@ -603,6 +603,7 @@ void test_n10_bomba_manual_independente() {
 void test_n7_discrepancy_persists_after_stop() {
     BurnerLogic b;
     HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
     
     in.gasValves = true; 
     b.update(in, 4.0f); 
@@ -610,6 +611,161 @@ void test_n7_discrepancy_persists_after_stop() {
     
     CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, nullptr, nullptr, nullptr);
     TEST_ASSERT_TRUE(b.hasDiscrepancy());
+}
+
+void test_n7_parada_normal_sem_discrepancia() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    b.update(in, 1.0f);
+    
+    in.fan = true; in.gasValves = true;
+    b.update(in, 1.0f);
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, nullptr, nullptr, nullptr);
+    b.update(in, 1.0f);
+    
+    TEST_ASSERT_FALSE(b.hasDiscrepancy());
+}
+
+void test_n7_fault_reset_recusado_com_condicao() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    in.gasValves = true;
+    b.update(in, 4.0f);
+    
+    CommandResult r = CommandHandler::handleCommand("AQ01", "FAULT_RESET", "", "Supervisor", &b, nullptr, nullptr, nullptr);
+    TEST_ASSERT_FALSE(r.accepted);
+}
+
+void test_n7_fault_reset_operador_recusado() {
+    BurnerLogic b;
+    CommandResult r = CommandHandler::handleCommand("AQ01", "FAULT_RESET", "", "Operator", &b, nullptr, nullptr, nullptr);
+    TEST_ASSERT_FALSE(r.accepted);
+}
+
+void test_n10_stop_abre_rele_mesmo_ciclo() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    b.update(in, 10.0f);
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, nullptr, nullptr, nullptr);
+    b.update(in, 10.0f); 
+    TEST_ASSERT_TRUE(b.getPermission());
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, nullptr, nullptr, nullptr);
+    b.update(in, 0.1f);
+    TEST_ASSERT_FALSE(b.getPermission());
+}
+
+void test_n10_pump_stop_derruba_queimador() {
+    BurnerLogic b; PumpLogic p;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    b.update(in, 10.0f);
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    b.update(in, 10.0f); 
+    TEST_ASSERT_TRUE(b.getPermission());
+    
+    CommandHandler::handleCommand("AQ01", "PUMP_STOP", "", "Operator", &b, &p, nullptr, nullptr);
+    b.update(in, 1.0f);
+    TEST_ASSERT_FALSE(b.getPermission());
+}
+
+void test_n10_emergencia_exige_nova_partida() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, nullptr, nullptr, nullptr);
+    b.update(in, 1.0f);
+    TEST_ASSERT_TRUE(b.getRequested());
+    
+    in.estopOk = false;
+    b.update(in, 1.0f);
+    TEST_ASSERT_FALSE(b.getRequested());
+    
+    in.estopOk = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_FALSE(b.getRequested());
+}
+
+void test_n10_pos_circulacao_da_config() {
+    PumpLogic p(45.0f);
+    p.update(true, false, false, false, true, 1.0f);
+    p.update(false, false, false, false, true, 1.0f);
+    TEST_ASSERT_TRUE(p.getCmd());
+    p.update(false, false, false, false, true, 43.0f);
+    TEST_ASSERT_TRUE(p.getCmd());
+    p.update(false, false, false, false, true, 2.0f);
+    TEST_ASSERT_FALSE(p.getCmd());
+}
+
+void test_n10_cadeia_aberta_bomba_continua() {
+    PlantLogic plant; TankLogic tx; BurnerLogic b1, b2; PumpLogic p1, p2;
+    HeaterInputs in1 = get_default_inputs(); in1.cmd_start = false;
+    HeaterInputs in2 = get_default_inputs(); in2.cmd_start = false;
+    
+    in1.cmd_start = true; in2.cmd_start = true;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
+    
+    in1.fan = true; in1.gasValves = true;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
+    TEST_ASSERT_TRUE(p1.getCmd()); 
+    
+    in1.chainOk = false;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
+    TEST_ASSERT_FALSE(b1.getPermission()); 
+    
+    in1.fan = false; in1.gasValves = false;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
+    
+    TEST_ASSERT_EQUAL(BurnerPhase::OFF, b1.getPhase());
+    TEST_ASSERT_TRUE(p1.getCmd());
+}
+
+void test_n10_sensor_pressao_falha_nao_corta_bomba() {
+    PlantLogic plant; TankLogic tx; BurnerLogic b1, b2; PumpLogic p1, p2;
+    HeaterInputs in1 = get_default_inputs(); in1.cmd_start = false;
+    HeaterInputs in2 = get_default_inputs(); in2.cmd_start = false;
+    
+    in1.cmd_start = true; in2.cmd_start = true;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
+    
+    in1.press.value = 0.0f;
+    in1.press.quality = Quality::COMM_LOST;
+    
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
+    TEST_ASSERT_FALSE(b1.getPermission());
+    
+    in1.fan = false; in1.gasValves = false;
+    plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
+    TEST_ASSERT_TRUE(p1.getCmd());
+}
+
+void test_n11_state_publica_retorno_real() {
+    TankLogic tx;
+    TankInputs in = {true, true, true, false, false, false};
+    tx.update(in, 1.0f, nullptr);
+    
+    TankState st = tx.getState();
+    TEST_ASSERT_TRUE(st.levelNormal);
+    TEST_ASSERT_TRUE(st.pressureLow);
+    TEST_ASSERT_TRUE(st.pumpFb);
+}
+
+void test_n11_auto_limpa_falha() {
+    TankLogic tx;
+    TankInputs in = {true, true, false, false, false, false};
+    tx.update(in, 10.0f, nullptr); 
+    
+    TankState st = tx.getState();
+    TEST_ASSERT_TRUE(st.pumpFault);
+    
+    CommandHandler::handleCommand("TX01", "TX01_AUTO", "", "Supervisor", nullptr, nullptr, &tx, nullptr);
+    
+    st = tx.getState();
+    TEST_ASSERT_FALSE(st.pumpFault);
 }
 
 void test_chain_estop() {
@@ -1150,6 +1306,17 @@ int main(int argc, char **argv) {
     RUN_TEST(test_n10_start_recusado_nao_liga_bomba);
     RUN_TEST(test_n10_stop_queimador_bomba_pos_circulacao);
     RUN_TEST(test_n10_bomba_manual_independente);
+    RUN_TEST(test_n7_parada_normal_sem_discrepancia);
+    RUN_TEST(test_n7_fault_reset_recusado_com_condicao);
+    RUN_TEST(test_n7_fault_reset_operador_recusado);
+    RUN_TEST(test_n10_stop_abre_rele_mesmo_ciclo);
+    RUN_TEST(test_n10_pump_stop_derruba_queimador);
+    RUN_TEST(test_n10_emergencia_exige_nova_partida);
+    RUN_TEST(test_n10_pos_circulacao_da_config);
+    RUN_TEST(test_n10_cadeia_aberta_bomba_continua);
+    RUN_TEST(test_n10_sensor_pressao_falha_nao_corta_bomba);
+    RUN_TEST(test_n11_state_publica_retorno_real);
+    RUN_TEST(test_n11_auto_limpa_falha);
     RUN_TEST(test_paradas_comportamentos);
     RUN_TEST(test_conversao_4_20ma);
     RUN_TEST(test_reset_limite_invalido);
