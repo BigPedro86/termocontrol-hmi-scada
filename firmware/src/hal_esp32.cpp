@@ -36,6 +36,7 @@ constexpr uint16_t EXPECTED_GPPU = EXPECTED_IODIR; // Mesma máscara, pull-up em
 HardwareSerial RS485Serial(2);
 
 HAL_ESP32::HAL_ESP32() {
+    i2cMutex = xSemaphoreCreateMutex();
     lastModbusPoll = 0;
     modbusCurrentSlave = 0;
     inputFilterMs = 40; // Default filter
@@ -50,17 +51,20 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
     uint32_t lastCheck = 0;
     int goodReads = 0;
 
-    auto readReg16 = [](uint8_t reg, bool& ok) -> uint16_t {
+    auto readReg16 = [](uint8_t reg, bool& ok, HAL_ESP32* h) -> uint16_t {
+        xSemaphoreTake(h->i2cMutex, portMAX_DELAY);
         Wire.beginTransmission(0x20);
         Wire.write(reg);
-        if (Wire.endTransmission() != 0) { ok = false; return 0; }
+        if (Wire.endTransmission() != 0) { ok = false; xSemaphoreGive(h->i2cMutex); return 0; }
         Wire.requestFrom(0x20, 2);
         if (Wire.available() == 2) {
             uint8_t l = Wire.read();
-            uint8_t h = Wire.read();
-            return (h << 8) | l;
+            uint8_t h_val = Wire.read();
+            xSemaphoreGive(h->i2cMutex);
+            return (h_val << 8) | l;
         }
         ok = false;
+        xSemaphoreGive(h->i2cMutex);
         return 0;
     };
 
@@ -69,10 +73,13 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
         bool cycleOk = true;
 
         // Leitura GPIO
-        uint16_t vals = readReg16(0x12, cycleOk); // 0x12 é GPIOA no bank 0
+        uint16_t vals = readReg16(0x12, cycleOk, hal); // 0x12 é GPIOA no bank 0
 
         if (cycleOk) {
             hal->mcpFilter.updateRaw(vals, now);
+            xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
+            hal->mcp.digitalWrite(MCP_BUZZER, hal->buzzerState ? HIGH : LOW);
+            xSemaphoreGive(hal->i2cMutex);
         } else {
             hal->mcpFilter.setIoFault(true);
             goodReads = 0;
@@ -83,23 +90,26 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
             lastCheck = now;
             
             bool configOk = true;
-            uint16_t iodir = readReg16(0x00, configOk); // IODIRA
-            uint16_t gppu  = readReg16(0x0C, configOk); // GPPUA
+            uint16_t iodir = readReg16(0x00, configOk, hal); // IODIRA
+            uint16_t gppu  = readReg16(0x0C, configOk, hal); // GPPUA
 
             if (!configOk || iodir != EXPECTED_IODIR || gppu != EXPECTED_GPPU) {
                 hal->mcpFilter.setIoFault(true);
                 goodReads = 0;
 
                 // Tenta reconfigurar
+                xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
                 hal->mcp.begin_I2C();
                 for(int i=0; i<16; i++) {
                     if (i == MCP_BUZZER || i == 7) {
                         hal->mcp.pinMode(i, OUTPUT);
-                        hal->mcp.digitalWrite(i, LOW);
+                        if (i == MCP_BUZZER) hal->mcp.digitalWrite(i, hal->buzzerState ? HIGH : LOW);
+                        else hal->mcp.digitalWrite(i, LOW);
                     } else {
                         hal->mcp.pinMode(i, INPUT_PULLUP);
                     }
                 }
+                xSemaphoreGive(hal->i2cMutex);
             } else {
                 if (goodReads < 3) {
                     goodReads++;
@@ -131,6 +141,7 @@ void HAL_ESP32::begin() {
 
     // 2. I2C devices
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    xSemaphoreTake(i2cMutex, portMAX_DELAY);
     if (mcp.begin_I2C()) {
         for(int i=0; i<16; i++) {
             if (i == MCP_BUZZER || i == 7) {
@@ -147,6 +158,7 @@ void HAL_ESP32::begin() {
     if (!ads.begin()) {
         mcpFilter.setIoFault(true); // Treated as ioFault
     }
+    xSemaphoreGive(i2cMutex);
 
     // 3. SPI devices (MAX31865)
     pt100[0] = new Adafruit_MAX31865(PIN_AQ01_CS, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK);
@@ -206,9 +218,7 @@ void HAL_ESP32::setTx01PumpCmd(bool state) {
 }
 
 void HAL_ESP32::setBuzzer(bool state) {
-    if (!mcpFilter.isIoFault()) {
-        mcp.digitalWrite(MCP_BUZZER, state ? HIGH : LOW);
-    }
+    buzzerState = state;
 }
 
 // ==========================================
@@ -277,7 +287,9 @@ AnalogValue HAL_ESP32::getTemperature(int h) {
 
 AnalogValue HAL_ESP32::getPressure(int h) {
     if (mcpFilter.isIoFault() || h < 0 || h > 1) return {0.0f, SensorQuality::FAULT};
+    xSemaphoreTake(i2cMutex, portMAX_DELAY);
     int16_t adc = ads.readADC_SingleEnded(h == 0 ? ADS_AQ01_PRESS : ADS_AQ02_PRESS);
+    xSemaphoreGive(i2cMutex);
     float volts = (adc * 4.096f) / 32768.0f;
     float mA = (volts / 250.0f) * 1000.0f;
     SensorValue sv = convert4_20mA(mA, 0.0f, 10.0f);

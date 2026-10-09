@@ -2,6 +2,7 @@
 
 #include "hal.h"
 #include <Arduino.h>
+#include <atomic>
 #include <Adafruit_MCP23X17.h>
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_MAX31865.h>
@@ -63,6 +64,8 @@ private:
     static void mcpTask(void *pvParameters);
     MCPFilter mcpFilter;
     uint32_t inputFilterMs;
+    std::atomic<bool> buzzerState{false};
+    SemaphoreHandle_t i2cMutex;
 
     // Modbus states
     struct ModbusData {

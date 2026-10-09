@@ -794,6 +794,7 @@ void test_state_json_contrato() {
 
 void test_filtro_mcp() {
     MCPFilter f(40);
+    f.setIoFault(false); // test assumes normal operation initially
     uint32_t now = 100;
     
     // Nível alto contínuo = INATIVO (false)
@@ -806,7 +807,6 @@ void test_filtro_mcp() {
     now += 5;
     TEST_ASSERT_TRUE(f.getFilteredInput(0, now));
     
-    // Pulsando a 100 Hz = período 10ms (10ms baixo, 10ms alto)
     // Pulsando a 100 Hz = período 10ms (10ms baixo, 10ms alto)
     // T = 0ms: BAIXO
     now = 200;
@@ -848,6 +848,7 @@ void test_filtro_mcp() {
 
 void test_mcp_falha_i2c() {
     MCPFilter f(40);
+    f.setIoFault(false);
     uint32_t now = 100;
     
     // Normal: leitura de opto conduzindo (nível BAIXO = 0 em tudo para simplificar)
@@ -875,6 +876,7 @@ void test_mcp_falha_i2c() {
 
 void test_mcp_falha_config() {
     MCPFilter f(40);
+    f.setIoFault(false);
     // Simula as checagens (mesma lógica que colocamos no hal_esp32.cpp)
     int goodReads = 0;
     
@@ -911,12 +913,47 @@ void test_mcp_falha_config() {
 
 void test_mcp_corrida() {
     MCPFilter f(40);
+    f.setIoFault(false);
     uint32_t now = 100;
     f.updateRaw(0x0000, 105); // lastLow = 105
     
     // Simula o loop tentando ler em now=100 mas a task atualizou pra 105 entre a atribuição do now e a verificação
     // O getFilteredInput deve retornar true (corrida contornada)
     TEST_ASSERT_TRUE(f.getFilteredInput(0, 100)); 
+}
+
+void test_mcp_rollover() {
+    MCPFilter f(40);
+    f.setIoFault(false);
+    
+    uint32_t t = 0xFFFFFF00;
+    f.updateRaw(0x0000, t); // Lida no fim do millis
+    
+    // Avança logo antes de virar
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, 0xFFFFFF10)); // d = 16 (<=40) -> ativo
+    
+    // Avança para virar, input some (update com 0xFFFF)
+    uint32_t now = 0x00000100;
+    f.updateRaw(0xFFFF, now); 
+    
+    // 0x100 - 0xFFFFFF00 = 0x200 = 512ms. Deve ser inativo!
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now));
+}
+
+void test_mcp_boot() {
+    MCPFilter f(40);
+    
+    // No boot, ioFault começa true. 
+    TEST_ASSERT_TRUE(f.isIoFault());
+    
+    // Even if we clear ioFault, seen is false, so it's inactive
+    f.setIoFault(false);
+    uint32_t now = 10;
+    TEST_ASSERT_FALSE(f.getFilteredInput(0, now)); 
+    
+    // Once we read, it becomes active
+    f.updateRaw(0x0000, 15);
+    TEST_ASSERT_TRUE(f.getFilteredInput(0, 15));
 }
 
 int main(int argc, char **argv) {
@@ -926,6 +963,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_mcp_falha_i2c);
     RUN_TEST(test_mcp_falha_config);
     RUN_TEST(test_mcp_corrida);
+    RUN_TEST(test_mcp_rollover);
+    RUN_TEST(test_mcp_boot);
     RUN_TEST(test_off_qualquer_fase);
     RUN_TEST(test_bomba_sem_retorno);
     RUN_TEST(test_sensor_pt100_em_falha);

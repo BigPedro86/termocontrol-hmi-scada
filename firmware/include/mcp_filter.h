@@ -4,13 +4,15 @@
 class MCPFilter {
 private:
     uint32_t lastLowTime[16];
+    bool seen[16];
     uint32_t filterMs;
     bool ioFault;
 
 public:
-    MCPFilter(uint32_t ms = 40) : filterMs(ms), ioFault(false) {
+    MCPFilter(uint32_t ms = 40) : filterMs(ms), ioFault(true) {
         for(int i = 0; i < 16; i++) {
             lastLowTime[i] = 0;
+            seen[i] = false;
         }
     }
 
@@ -28,16 +30,18 @@ public:
         for(int i = 0; i < 16; i++) {
             if ((mcpReadVals & (1 << i)) == 0) { // Nível BAIXO (ativo)
                 lastLowTime[i] = now;
+                seen[i] = true;
             }
         }
     }
 
     // Called by application
     bool getFilteredInput(int pin, uint32_t now) {
-        if (ioFault) return false;
+        if (ioFault || !seen[pin]) return false;
         uint32_t t = lastLowTime[pin];
-        if (t > now) return true; // Race condition: updated after 'now' was captured
-        return (now - t <= filterMs);
+        int32_t d = (int32_t)(now - t);
+        if (d < 0) return true;
+        return d <= filterMs;
     }
 
     bool isIoFault() const {
@@ -46,7 +50,8 @@ public:
 
     void resetFilter() {
         for(int i = 0; i < 16; i++) {
-            lastLowTime[i] = 0; // Vai garantir que pareça inativo até a primeira leitura de nível baixo
+            lastLowTime[i] = 0;
+            seen[i] = false; // Vai garantir que pareça inativo até a primeira leitura de nível baixo
         }
     }
 };
