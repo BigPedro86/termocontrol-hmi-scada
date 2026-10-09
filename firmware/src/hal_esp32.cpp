@@ -51,6 +51,7 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
     uint32_t lastCheck = 0;
     int goodReads = 0;
     bool lastBuzzerState = false;
+    uint8_t consecutiveFailures = 0;
 
     auto readReg16 = [](uint8_t reg, bool& ok, HAL_ESP32* h) -> uint16_t {
         xSemaphoreTake(h->i2cMutex, portMAX_DELAY);
@@ -78,6 +79,7 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
 
         bool currentBuzzer = hal->buzzerState;
         if (cycleOk) {
+            consecutiveFailures = 0;
             hal->mcpFilter.updateRaw(vals, now);
             if (currentBuzzer != lastBuzzerState) {
                 xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
@@ -88,6 +90,41 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
         } else {
             hal->mcpFilter.setIoFault(true);
             goodReads = 0;
+            consecutiveFailures++;
+            if (consecutiveFailures >= 3) {
+                xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
+                Wire.end();
+                pinMode(PIN_I2C_SDA, INPUT_PULLUP);
+                pinMode(PIN_I2C_SCL, OUTPUT);
+                for(int i=0; i<9; i++) {
+                    digitalWrite(PIN_I2C_SCL, LOW);
+                    delayMicroseconds(10);
+                    digitalWrite(PIN_I2C_SCL, HIGH);
+                    delayMicroseconds(10);
+                }
+                pinMode(PIN_I2C_SDA, OUTPUT);
+                digitalWrite(PIN_I2C_SDA, LOW);
+                delayMicroseconds(10);
+                digitalWrite(PIN_I2C_SCL, HIGH);
+                delayMicroseconds(10);
+                digitalWrite(PIN_I2C_SDA, HIGH);
+                delayMicroseconds(10);
+
+                Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+                hal->mcp.begin_I2C();
+                for(int i=0; i<16; i++) {
+                    if (i == MCP_BUZZER || i == 7) {
+                        hal->mcp.pinMode(i, OUTPUT);
+                        if (i == MCP_BUZZER) hal->mcp.digitalWrite(i, currentBuzzer ? HIGH : LOW);
+                        else hal->mcp.digitalWrite(i, LOW);
+                    } else {
+                        hal->mcp.pinMode(i, INPUT_PULLUP);
+                    }
+                }
+                xSemaphoreGive(hal->i2cMutex);
+                lastBuzzerState = currentBuzzer;
+                consecutiveFailures = 0;
+            }
             // Se falhou, nao continua pro check de 1s
         }
 
