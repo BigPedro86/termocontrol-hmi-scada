@@ -1264,6 +1264,85 @@ void test_mcp_boot() {
     TEST_ASSERT_TRUE(f.getFilteredInput(0, 15));
 }
 
+void test_n12_alarm_ack_condicao_normalizada() {
+    HALMockTest hal;
+    AlarmEngine eng(&hal);
+    eng.process(0, 50.0f, 1.0f, false, false, true, false, false, false, false, false); // LFL_LOCKOUT
+    
+    bool found = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "AQ01_LFL_LOCKOUT" && a.active && !a.acked) found = true;
+    }
+    TEST_ASSERT_TRUE(found);
+    
+    eng.process(0, 50.0f, 1.0f, false, false, false, false, false, false, false, false); // normalized
+    found = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "AQ01_LFL_LOCKOUT" && !a.active && !a.acked) found = true;
+    }
+    TEST_ASSERT_TRUE(found);
+    
+    eng.ackAlarm("AQ01_LFL_LOCKOUT");
+    eng.process(0, 50.0f, 1.0f, false, false, false, false, false, false, false, false); // cleanup
+    found = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "AQ01_LFL_LOCKOUT") found = true;
+    }
+    TEST_ASSERT_FALSE(found);
+}
+
+void test_n12_alarm_silence_sirene() {
+    HALMockTest hal;
+    AlarmEngine eng(&hal);
+    eng.process(0, 50.0f, 1.0f, false, false, true, false, false, false, false, false); // Critical
+    TEST_ASSERT_TRUE(eng.hasCriticalAlarms());
+    
+    eng.silenceSiren();
+    TEST_ASSERT_FALSE(eng.hasCriticalAlarms());
+    
+    eng.process(1, 50.0f, 1.0f, false, false, true, false, false, false, false, false); // New Critical
+    TEST_ASSERT_TRUE(eng.hasCriticalAlarms());
+}
+
+void test_n12_alarm_ack_all() {
+    HALMockTest hal;
+    AlarmEngine eng(&hal);
+    eng.process(0, 50.0f, 1.0f, false, false, true, false, false, false, false, false); 
+    eng.process(1, 50.0f, 1.0f, false, false, true, false, false, false, false, false); 
+    
+    eng.process(0, 50.0f, 1.0f, false, false, false, false, false, false, false, false); 
+    eng.process(1, 50.0f, 1.0f, false, false, false, false, false, false, false, false); 
+    
+    eng.ackAlarm("ALL");
+    eng.process(0, 50.0f, 1.0f, false, false, false, false, false, false, false, false); 
+    
+    bool foundAny = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "AQ01_LFL_LOCKOUT" || a.code == "AQ02_LFL_LOCKOUT") foundAny = true;
+    }
+    TEST_ASSERT_FALSE(foundAny);
+}
+
+void test_n12_alarme_boot_esp32_reiniciado() {
+    HALMockTest hal;
+    AlarmEngine eng(&hal);
+    
+    bool found = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "SYS_ESP32_RESTART" && !a.active && !a.acked && a.severity == 'H') found = true;
+    }
+    TEST_ASSERT_TRUE(found);
+    
+    eng.ackAlarm("SYS_ESP32_RESTART");
+    eng.process(0, 50.0f, 1.0f, false, false, false, false, false, false, false, false);
+    
+    found = false;
+    for(auto &a : eng.getAlarms()) {
+        if(a.code == "SYS_ESP32_RESTART") found = true;
+    }
+    TEST_ASSERT_FALSE(found);
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_partida_normal);
@@ -1336,5 +1415,9 @@ int main(int argc, char **argv) {
     RUN_TEST(test_plant_nivel_baixo_pressao_ll_bomba_desliga_na_hora);
     RUN_TEST(test_plant_nivel_normaliza_rearme);
     RUN_TEST(test_state_json_contrato);
+    RUN_TEST(test_n12_alarm_ack_condicao_normalizada);
+    RUN_TEST(test_n12_alarm_silence_sirene);
+    RUN_TEST(test_n12_alarm_ack_all);
+    RUN_TEST(test_n12_alarme_boot_esp32_reiniciado);
     return UNITY_END();
 }
