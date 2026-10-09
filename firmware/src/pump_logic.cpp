@@ -1,4 +1,5 @@
 #include "pump_logic.h"
+#include "config.h"
 
 PumpLogic::PumpLogic(float postPurgeTimeS) : cmd(false), requested(false), fault(false),
     noFbTimer(0), postPurgeTimer(0), postPurgeConfigS(postPurgeTimeS) {}
@@ -49,7 +50,7 @@ void PumpLogic::update(bool startCmd, bool stopCmd, bool forceStop, bool fb, flo
     
     if (cmd && !fb) {
         noFbTimer += deltaTimeS;
-        if (noFbTimer > 5.0f) {
+        if (noFbTimer > config.pumpFeedbackTimeoutSec) {
             fault = true;
             cmd = false;
         }

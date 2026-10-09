@@ -1,6 +1,6 @@
 #include "command_handler.h"
 
-CommandResult CommandHandler::handleCommand(const std::string& target, const std::string& command, const std::string& role, 
+CommandResult CommandHandler::handleCommand(const std::string& target, const std::string& command, const std::string& value, const std::string& role, 
                                             BurnerLogic* bLogic, PumpLogic* pLogic, TankLogic* tLogic, AlarmEngine* alarms) {
     
     if (target == "TX01") {
@@ -41,6 +41,7 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
         return {true, "STOP_EXECUTED"};
     }
     if (command == "PUMP_STOP") {
+        if (bLogic) bLogic->stopBurner();
         if (pLogic) pLogic->stopPump();
         return {true, "STOP_EXECUTED"};
     }
@@ -48,7 +49,14 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
     // Comandos de Partida
     if (command == "BURNER_START") {
         if (role == "Operator" || role == "Supervisor" || role == "Maintenance" || role == "Admin") {
-            if (bLogic) bLogic->startBurner();
+            if (bLogic) {
+                for (const auto& br : bLogic->getBlockReasons()) {
+                    if (br != "NOT_REQUESTED" && br != "PUMP_FB_WAIT" && br != "PUMP_FB_WAIT_10S") {
+                        return {false, br};
+                    }
+                }
+                bLogic->startBurner();
+            }
             return {true, "START_ACCEPTED"};
         }
         return {false, "UNAUTHORIZED_ROLE"};
@@ -63,7 +71,14 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
 
     // Reset de Limite e Alarme
     if (command == "ALARM_ACK") {
+        std::string ackVal = value.empty() ? "ALL" : value;
+        // role doesn't matter for ALL as long as user is logged in
+        if (alarms) alarms->ackAlarm(ackVal);
         return {true, "ALARM_ACKNOWLEDGED"};
+    }
+    if (command == "ALARM_SILENCE") {
+        if (alarms) alarms->silenceSiren();
+        return {true, "ALARM_SILENCED"};
     }
     if (command == "SW_LIMIT_RESET") {
         if (role == "Supervisor" || role == "Maintenance" || role == "Admin") {
@@ -81,6 +96,19 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
         if (role == "Supervisor" || role == "Maintenance" || role == "Admin") {
             if (bLogic) bLogic->resetLockoutCount();
             return {true, "LOCKOUT_RESET_ACCEPTED"};
+        }
+        return {false, "UNAUTHORIZED_ROLE"};
+    }
+    
+    if (command == "FAULT_RESET") {
+        if (role == "Supervisor" || role == "Maintenance" || role == "Admin") {
+            if (bLogic) {
+                if (bLogic->isConditionStillActive()) {
+                    return {false, "CONDITION_STILL_ACTIVE"};
+                }
+                bLogic->resetFaults();
+                return {true, "FAULT_RESET_ACCEPTED"};
+            }
         }
         return {false, "UNAUTHORIZED_ROLE"};
     }

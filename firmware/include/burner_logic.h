@@ -22,10 +22,12 @@ public:
     int getStarts() const { return 0; } // TODO: track starts
     bool getRequested() const { return requested; }
     int getLockouts24h() const { return lockoutTimes.size(); }
-    float getRunHours() const { return runHoursCont; }
+    float getRunHours() const { return 0.0f; }
 
     void startBurner();
     void stopBurner();
+    void resetFaults();
+    bool isConditionStillActive() const;
     void resetSoftwareLimit();
     void resetLockoutCount();
     
@@ -39,17 +41,26 @@ private:
     bool requested;
     std::vector<std::string> blockReasons;
     
+    bool lastGasValves;
+    bool lastFan;
+    bool lastTentativePerm;
+    
     float purgeTimer;
     bool swLimitLatched;
-    std::vector<float> lockoutTimes;
-    float totalUptime;
-    float runHoursCont;
-    bool force24hStop;
+    std::vector<uint32_t> lockoutTimes;
+    float totalUptime; // Kept for other uses if needed, but lockout uses absolute epoch
     bool ignitionTimeout;
+    
+    // Discrepancy
     bool discrepancy;
+    bool discGasNoPerm;
+    bool discGasNoFan;
+    float discTimer;
+    float noFanTimer;
     
     float pumpFbTimer;
     bool prevCmdStart;
+    bool prevLockout;
     bool swLimitResetPending;
     
     int heaterId;

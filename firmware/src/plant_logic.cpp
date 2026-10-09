@@ -20,6 +20,6 @@ void PlantLogic::update(BurnerLogic& b1, BurnerLogic& b2,
     bool forceStop1 = in1.press.value < minPressure;
     bool forceStop2 = in2.press.value < minPressure;
     
-    p1.update(b1.getPhase() != BurnerPhase::OFF, false, forceStop1, in1.pumpFb, dt);
-    p2.update(b2.getPhase() != BurnerPhase::OFF, false, forceStop2, in2.pumpFb, dt);
+    p1.update(b1.getRequested(), false, forceStop1, in1.pumpFb, dt);
+    p2.update(b2.getRequested(), false, forceStop2, in2.pumpFb, dt);
 }

@@ -16,7 +16,7 @@ struct CommandResult {
 class CommandHandler {
 public:
     // Processa comandos validados pela Lista Branca
-    static CommandResult handleCommand(const std::string& target, const std::string& command, const std::string& role, 
+    static CommandResult handleCommand(const std::string& target, const std::string& command, const std::string& value, const std::string& role, 
                                        BurnerLogic* bLogic, PumpLogic* pLogic, TankLogic* tLogic, AlarmEngine* alarms);
 
     // Obtém as ações permitidas baseadas no estado atual

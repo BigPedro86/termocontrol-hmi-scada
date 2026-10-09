@@ -71,16 +71,17 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             std::string user = doc["user"] | "";
             std::string role = doc["role"] | "";
             std::string reason = doc["reason"] | "";
+            std::string value = doc["value"] | "";
             
             CommandResult r = {false, "UNKNOWN_TARGET"};
             if (target == "AQ01") {
-                r = CommandHandler::handleCommand(target, command, role, &burner1, &pump1, nullptr, &alarms);
+                r = CommandHandler::handleCommand(target, command, value, role, &burner1, &pump1, nullptr, &alarms);
             } else if (target == "AQ02") {
-                r = CommandHandler::handleCommand(target, command, role, &burner2, &pump2, nullptr, &alarms);
+                r = CommandHandler::handleCommand(target, command, value, role, &burner2, &pump2, nullptr, &alarms);
             } else if (target == "TX01") {
-                r = CommandHandler::handleCommand(target, command, role, nullptr, nullptr, &tx01, &alarms);
+                r = CommandHandler::handleCommand(target, command, value, role, nullptr, nullptr, &tx01, &alarms);
             } else {
-                r = CommandHandler::handleCommand(target, command, role, nullptr, nullptr, nullptr, &alarms);
+                r = CommandHandler::handleCommand(target, command, value, role, nullptr, nullptr, nullptr, &alarms);
             }
             sendAck(id, r.accepted, r.reason);
         }

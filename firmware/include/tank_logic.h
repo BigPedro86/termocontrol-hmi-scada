@@ -25,7 +25,11 @@ private:
     bool pumpCmd;
     bool lowLevelLatched;
     bool timeoutLatched;
+    bool pumpFaultLatched;
+    
     bool currentLevelNormal;
+    bool currentPressureLow;
+    bool currentPumpFb;
     
     float lowLevelTimer;
     float pumpOffTimer;

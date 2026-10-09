@@ -85,7 +85,7 @@ void test_partida_normal() {
     
     b.update(in, 9.0f); // 10s total
     TEST_ASSERT_TRUE(b.getPermission());
-    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b.getPhase());
+    TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b.getPhase());
     
     in.fan = true;
     b.update(in, 1.0f);
@@ -124,7 +124,7 @@ void test_bomba_sem_retorno() {
     in.pumpFb = false; // falha de fluxo
     b.update(in, 1.0f);
     TEST_ASSERT_FALSE(b.getPermission());
-    TEST_ASSERT_EQUAL(BurnerPhase::OFF, b.getPhase());
+    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b.getPhase());
 }
 
 void test_sensor_pt100_em_falha() {
@@ -179,7 +179,7 @@ void test_3_bloqueios_24h() {
     TEST_ASSERT_TRUE(found);
     
     // Reset via Command Handler no b2
-    CommandHandler::handleCommand("AQ01", "LOCKOUT_COUNT_RESET", "Maintenance", &b2, nullptr, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ01", "LOCKOUT_COUNT_RESET", "", "Maintenance", &b2, nullptr, nullptr, nullptr);
     
     apply_permission(b2, in);
     TEST_ASSERT_TRUE(b2.getPermission());
@@ -193,6 +193,9 @@ void test_gas_valves_sem_permissao() {
     
     b.update(in, 1.0f);
     TEST_ASSERT_FALSE(b.getPermission());
+    TEST_ASSERT_FALSE(b.hasDiscrepancy()); // 1s < 3s grace period
+    
+    b.update(in, 3.0f);
     TEST_ASSERT_TRUE(b.hasDiscrepancy());
 }
 
@@ -240,18 +243,23 @@ void test_limite_software_travamento() {
     TEST_ASSERT_TRUE(b.getPermission());
 }
 
-void test_parada_24h() {
-    BurnerLogic b;
+void test_n8_lockout_initialized_on_boot() {
+    HALMockTest hal;
+    BurnerLogic b(0, &hal);
+    TEST_ASSERT_EQUAL(0, b.getLockouts24h());
+}
+
+void test_n8_lockout_count_reset_command() {
+    HALMockTest hal;
+    BurnerLogic b(0, &hal);
     HeaterInputs in = get_default_inputs();
-    in.cmd_start = false; b.update(in, 1.0f);
-    in.cmd_start = true; b.update(in, 10.0f);
-    in.fan = true;
-    in.gasValves = true;
-    b.update(in, 1.0f);
-    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
     
-    b.update(in, 86400.0f);
-    TEST_ASSERT_FALSE(b.getPermission());
+    in.lockout = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(1, b.getLockouts24h());
+    
+    CommandHandler::handleCommand("AQ01", "LOCKOUT_COUNT_RESET", "", "Admin", &b, nullptr, nullptr, nullptr);
+    TEST_ASSERT_EQUAL(0, b.getLockouts24h());
 }
 
 void test_modbus_sem_resposta() {
@@ -272,7 +280,7 @@ void test_paradas_comportamentos() {
     in.cmd_start = false; b.update(in, 1.0f);
     
     in.cmd_start = true; b.update(in, 10.0f);
-    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b.getPhase());
+    TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b.getPhase());
     
     in.cmd_stop = true; b.update(in, 1.0f);
     TEST_ASSERT_FALSE(b.getPermission());
@@ -314,14 +322,14 @@ void test_reset_limite_invalido() {
     TEST_ASSERT_TRUE(b.isSwLimitLatched());
     
     // Reset by user, but temp still high (CommandHandler returns TEMP_STILL_HIGH)
-    CommandResult r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "Supervisor", &b, nullptr, nullptr, nullptr);
+    CommandResult r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "", "Supervisor", &b, nullptr, nullptr, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
     TEST_ASSERT_EQUAL_STRING("TEMP_STILL_HIGH", r.reason.c_str());
     
     in.temp.value = 80.0f;
     b.update(in, 1.0f);
     
-    r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "Supervisor", &b, nullptr, nullptr, nullptr);
+    r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "", "Supervisor", &b, nullptr, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
     TEST_ASSERT_EQUAL_STRING("LIMIT_RESET_ACCEPTED", r.reason.c_str());
     
@@ -353,33 +361,33 @@ void test_bomba_falha_sem_fb() {
 
 void test_comando_stop_aceito() {
     BurnerLogic b; PumpLogic p;
-    CommandResult r = CommandHandler::handleCommand("AQ01", "BURNER_STOP", "Operator", &b, &p, nullptr, nullptr);
+    CommandResult r = CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
-    r = CommandHandler::handleCommand("AQ01", "PUMP_STOP", "Operator", &b, &p, nullptr, nullptr);
+    r = CommandHandler::handleCommand("AQ01", "PUMP_STOP", "", "Operator", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
 }
 
 void test_comando_desconhecido() {
-    CommandResult r = CommandHandler::handleCommand("AQ01", "HACK_SYSTEM", "Admin", nullptr, nullptr, nullptr, nullptr);
+    CommandResult r = CommandHandler::handleCommand("AQ01", "HACK_SYSTEM", "", "Admin", nullptr, nullptr, nullptr, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
     TEST_ASSERT_EQUAL_STRING("UNKNOWN_COMMAND", r.reason.c_str());
 }
 
 void test_alvo_invalido() {
-    CommandResult r = CommandHandler::handleCommand("ZZ99", "BURNER_STOP", "Operator", nullptr, nullptr, nullptr, nullptr);
+    CommandResult r = CommandHandler::handleCommand("ZZ99", "BURNER_STOP", "", "Operator", nullptr, nullptr, nullptr, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
     TEST_ASSERT_EQUAL_STRING("INVALID_TARGET", r.reason.c_str());
 }
 
 void test_perfis_servidor() {
     BurnerLogic b; PumpLogic p;
-    CommandResult r = CommandHandler::handleCommand("AQ01", "SET_CONFIG", "Operator", &b, &p, nullptr, nullptr);
+    CommandResult r = CommandHandler::handleCommand("AQ01", "SET_CONFIG", "", "Operator", &b, &p, nullptr, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
-    r = CommandHandler::handleCommand("AQ01", "SET_CONFIG", "Maintenance", &b, &p, nullptr, nullptr);
+    r = CommandHandler::handleCommand("AQ01", "SET_CONFIG", "", "Maintenance", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
-    r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "Supervisor", &b, &p, nullptr, nullptr);
+    r = CommandHandler::handleCommand("AQ01", "SW_LIMIT_RESET", "", "Supervisor", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
-    r = CommandHandler::handleCommand("AQ01", "BURNER_START", "Admin", &b, &p, nullptr, nullptr);
+    r = CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Admin", &b, &p, nullptr, nullptr);
     TEST_ASSERT_TRUE(r.accepted);
 }
 
@@ -433,31 +441,16 @@ void test_sensor_fault_sem_limites() {
     TEST_ASSERT_TRUE(faultFound);
 }
 
-void test_parada_24h_religa() {
+void test_n7_discrepancy_persists_after_stop() {
     BurnerLogic b;
     HeaterInputs in = get_default_inputs();
-    apply_permission(b, in);
     
-    in.fan = true;
-    in.gasValves = true;
-    b.update(in, 1.0f);
-    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+    in.gasValves = true; 
+    b.update(in, 4.0f); 
+    TEST_ASSERT_TRUE(b.hasDiscrepancy());
     
-    b.update(in, 86400.0f);
-    TEST_ASSERT_FALSE(b.getPermission());
-    
-    in.gasValves = false; 
-    b.update(in, 1.0f); 
-    TEST_ASSERT_EQUAL(BurnerPhase::POST_PURGE, b.getPhase());
-    TEST_ASSERT_FALSE(b.getPermission());
-    
-    in.fan = false; 
-    b.update(in, 1.0f); 
-    TEST_ASSERT_EQUAL(BurnerPhase::OFF, b.getPhase());
-    
-    b.update(in, 1.0f);
-    TEST_ASSERT_TRUE(b.getPermission());
-    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b.getPhase());
+    CommandHandler::handleCommand("AQ01", "BURNER_STOP", "", "Operator", &b, nullptr, nullptr, nullptr);
+    TEST_ASSERT_TRUE(b.hasDiscrepancy());
 }
 
 void test_chain_estop() {
@@ -507,7 +500,7 @@ void test_tx01_nivel_volta_sem_rearme() {
 
 void test_tx01_rearme_operator_recusado() {
     TankLogic t;
-    CommandResult r = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Operator", nullptr, nullptr, &t, nullptr);
+    CommandResult r = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "", "Operator", nullptr, nullptr, &t, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
 }
 
@@ -516,7 +509,7 @@ void test_tx01_rearme_com_nivel_ainda_baixo() {
     TankInputs in = {false, false, true, false, false, false}; // level normal = false
     t.update(in, 2.1f, nullptr); // latched
     
-    CommandResult r = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Supervisor", nullptr, nullptr, &t, nullptr);
+    CommandResult r = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "", "Supervisor", nullptr, nullptr, &t, nullptr);
     TEST_ASSERT_FALSE(r.accepted);
     TEST_ASSERT_EQUAL_STRING("TANK_LEVEL_STILL_LOW", r.reason.c_str());
 }
@@ -693,10 +686,10 @@ void test_plant_nivel_normaliza_rearme() {
     HeaterInputs in1 = get_default_inputs();
     HeaterInputs in2 = get_default_inputs();
     
-    CommandHandler::handleCommand("AQ01", "PUMP_START", "Operator", &b1, &p1, nullptr, nullptr);
-    CommandHandler::handleCommand("AQ02", "PUMP_START", "Operator", &b2, &p2, nullptr, nullptr);
-    CommandHandler::handleCommand("AQ01", "BURNER_START", "Operator", &b1, &p1, nullptr, nullptr);
-    CommandHandler::handleCommand("AQ02", "BURNER_START", "Operator", &b2, &p2, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ01", "PUMP_START", "", "Operator", &b1, &p1, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ02", "PUMP_START", "", "Operator", &b2, &p2, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b1, &p1, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ02", "BURNER_START", "", "Operator", &b2, &p2, nullptr, nullptr);
     
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
     
@@ -707,7 +700,7 @@ void test_plant_nivel_normaliza_rearme() {
     TEST_ASSERT_FALSE(b1.getPermission());
     
     // Tentativa de rearme com nível ainda baixo
-    CommandResult res = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Maintenance", nullptr, nullptr, &tx, nullptr);
+    CommandResult res = CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "", "Maintenance", nullptr, nullptr, &tx, nullptr);
     TEST_ASSERT_FALSE(res.accepted);
     TEST_ASSERT_EQUAL_STRING("TANK_LEVEL_STILL_LOW", res.reason.c_str());
     
@@ -720,7 +713,7 @@ void test_plant_nivel_normaliza_rearme() {
     TEST_ASSERT_FALSE(b1.getPermission()); // Nothing restarts
     
     // Rearme
-    CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "Maintenance", nullptr, nullptr, &tx, nullptr);
+    CommandHandler::handleCommand("TX01", "TANK_LEVEL_RESET", "", "Maintenance", nullptr, nullptr, &tx, nullptr);
     tx.update(tin, 1.0f, nullptr);
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
     
@@ -728,13 +721,13 @@ void test_plant_nivel_normaliza_rearme() {
     TEST_ASSERT_FALSE(b1.getPermission());
     
     // Trigger start edge
-    CommandHandler::handleCommand("AQ01", "BURNER_START", "Operator", &b1, &p1, nullptr, nullptr);
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b1, &p1, nullptr, nullptr);
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 1.0f);
     
     in1.pumpFb = true;
     plant.update(b1, b2, p1, p2, tx, in1, in2, 0.5f, 10.0f);
     
-    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b1.getPhase());
+    TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b1.getPhase());
 }
 
 void check_json_types(JsonObject expected, JsonObject actual, const std::string& path) {
@@ -975,7 +968,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_partida_sem_chama_60s);
     RUN_TEST(test_reinicio_seguro);
     RUN_TEST(test_limite_software_travamento);
-    RUN_TEST(test_parada_24h);
+    RUN_TEST(test_n8_lockout_initialized_on_boot);
+    RUN_TEST(test_n8_lockout_count_reset_command);
     RUN_TEST(test_modbus_sem_resposta);
     RUN_TEST(test_bomba_pos_purga);
     RUN_TEST(test_bomba_falha_sem_fb);
@@ -987,7 +981,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_aquecedores_independentes);
     RUN_TEST(test_alarme_gas_sem_vento);
     RUN_TEST(test_sensor_fault_sem_limites);
-    RUN_TEST(test_parada_24h_religa);
+    RUN_TEST(test_n7_discrepancy_persists_after_stop);
     RUN_TEST(test_paradas_comportamentos);
     RUN_TEST(test_conversao_4_20ma);
     RUN_TEST(test_reset_limite_invalido);

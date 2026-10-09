@@ -1,14 +1,13 @@
 #include "burner_logic.h"
-
-#include "config.h"
-
 #include "config.h"
 #include <sstream>
+#include <time.h>
 
 BurnerLogic::BurnerLogic(int id, HAL* hal) : phase(BurnerPhase::OFF), permission(false), requested(false),
     purgeTimer(0), swLimitLatched(false), totalUptime(0),
-    runHoursCont(0), force24hStop(false), ignitionTimeout(false), discrepancy(false),
-    pumpFbTimer(0), prevCmdStart(false), swLimitResetPending(false),
+    ignitionTimeout(false), 
+    discrepancy(false), discGasNoPerm(false), discGasNoFan(false), discTimer(0), noFanTimer(0),
+    pumpFbTimer(0), prevCmdStart(false), prevLockout(false), swLimitResetPending(false),
     heaterId(id), hal_ptr(hal), lastTemp(0), lastSwLimit(90.0f) {
     _loadLockouts();
 }
@@ -20,7 +19,18 @@ void BurnerLogic::startBurner() {
 void BurnerLogic::stopBurner() {
     requested = false;
     ignitionTimeout = false;
+}
+
+void BurnerLogic::resetFaults() {
     discrepancy = false;
+    discGasNoPerm = false;
+    discGasNoFan = false;
+}
+
+bool BurnerLogic::isConditionStillActive() const {
+    if (discGasNoFan && lastGasValves && !lastFan) return true;
+    if (discGasNoPerm && lastGasValves && !lastTentativePerm) return true;
+    return false;
 }
 
 void BurnerLogic::resetSoftwareLimit() {
@@ -40,7 +50,7 @@ void BurnerLogic::_saveLockouts() {
     if (!hal_ptr) return;
     std::string key = "AQ0" + std::to_string(heaterId + 1) + "_LCK";
     std::string val = "";
-    for (float t : lockoutTimes) {
+    for (uint32_t t : lockoutTimes) {
         val += std::to_string(t) + ";";
     }
     hal_ptr->saveConfig(key, val);
@@ -56,17 +66,22 @@ void BurnerLogic::_loadLockouts() {
     while ((pos = val.find(";")) != std::string::npos) {
         std::string token = val.substr(0, pos);
         if (!token.empty()) {
-            try { lockoutTimes.push_back(std::stof(token)); } catch(...) {}
+            try { lockoutTimes.push_back(std::stoul(token)); } catch(...) {}
         }
         val.erase(0, pos + 1);
     }
 }
 
 void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
+    static bool firstRun[2] = {true, true};
+    if (firstRun[heaterId]) {
+        firstRun[heaterId] = false;
+        prevLockout = inputs.lockout;
+    }
+
     if (inputs.cmd_stop) {
         requested = false;
         ignitionTimeout = false; 
-        discrepancy = false;     
     } else if (inputs.cmd_start && !prevCmdStart) {
         requested = true;
     }
@@ -82,24 +97,38 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
     lastTemp = inputs.temp.value;
     lastSwLimit = inputs.swLimit;
     
-    totalUptime += deltaTimeS;
-    
-    if (inputs.lockout && phase != BurnerPhase::LOCKOUT) {
-        lockoutTimes.push_back(totalUptime);
-        _saveLockouts();
+    time_t nowTime;
+    time(&nowTime);
+    uint32_t currentEpoch = (uint32_t)nowTime;
+    if (currentEpoch < 100000) {
+        currentEpoch = inputs.uptime_s; // fallback to uptime if NTP not synced
     }
     
+    if (inputs.lockout && !prevLockout) {
+        lockoutTimes.push_back(currentEpoch);
+        _saveLockouts();
+    }
+    prevLockout = inputs.lockout;
+    
     bool changed = false;
-    while (!lockoutTimes.empty() && (totalUptime - lockoutTimes.front()) > 86400.0f) {
-        lockoutTimes.erase(lockoutTimes.begin());
-        changed = true;
+    while (!lockoutTimes.empty()) {
+        uint32_t oldest = lockoutTimes.front();
+        if (currentEpoch >= oldest && (currentEpoch - oldest) > 86400) {
+            lockoutTimes.erase(lockoutTimes.begin());
+            changed = true;
+        } else if (currentEpoch < oldest && (oldest - currentEpoch) > 86400) {
+             // In case it was an epoch but now it's uptime, don't delete to be conservative.
+             // Or if clock jumped back. We keep it.
+             break;
+        } else {
+             break;
+        }
     }
     if (changed) _saveLockouts();
     
-    // Evaluate if we are in purge for too long
     if (phase == BurnerPhase::PURGE) {
         purgeTimer += deltaTimeS;
-        if (purgeTimer > 60.0f) {
+        if (purgeTimer > config.ignitionTimeoutSec) {
             ignitionTimeout = true;
         }
     } else {
@@ -107,9 +136,7 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
     }
     
     if (phase == BurnerPhase::RUNNING) {
-        runHoursCont += deltaTimeS;
-    } else {
-        runHoursCont = 0.0f;
+        // running logic
     }
     
     if (inputs.pumpFb) {
@@ -120,6 +147,35 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
 
     checkInterlocks(inputs);
     evaluatePhase(inputs);
+    
+    lastGasValves = inputs.gasValves;
+    lastFan = inputs.fan;
+    
+    // N7: Discrepancy checks (must run after checkInterlocks sets permission)
+    if (inputs.gasValves && !permission) {
+        discTimer += deltaTimeS;
+        if (discTimer > config.discGraceSec) {
+            discGasNoPerm = true;
+            discrepancy = true;
+        }
+    } else {
+        discTimer = 0.0f;
+    }
+    
+    if (inputs.gasValves && !inputs.fan) {
+        noFanTimer += deltaTimeS;
+        if (noFanTimer > config.noFanGraceSec) {
+            discGasNoFan = true;
+            discrepancy = true;
+        }
+    } else {
+        noFanTimer = 0.0f;
+    }
+    
+    // Check if discrepancy modifies permission (if it just triggered)
+    if (discrepancy) {
+        permission = false;
+    }
 }
 
 void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
@@ -163,31 +219,19 @@ void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
         blockReasons.push_back("SW_TEMP_LIMIT_LATCHED");
     }
     
-    if (runHoursCont >= 86400.0f) {
-        force24hStop = true;
-    }
+    lastTentativePerm = blockReasons.empty();
     
-    if (force24hStop && phase == BurnerPhase::OFF) {
-        force24hStop = false;
-    }
-
-    if (force24hStop) {
-        blockReasons.push_back("24H_CONTINUOUS_STOP");
-    }
-    
-    bool tentativePerm = blockReasons.empty();
-    if (!tentativePerm && inputs.gasValves && phase != BurnerPhase::RUNNING) {
-        discrepancy = true;
-    }
-
-    if (discrepancy) {
+    if (discGasNoPerm) {
         blockReasons.push_back("DISCREPANCY_GAS_WITHOUT_PERM");
+    }
+    if (discGasNoFan) {
+        blockReasons.push_back("DISCREPANCY_GAS_WITHOUT_FAN");
     }
     if (ignitionTimeout) {
         blockReasons.push_back("IGNITION_TIMEOUT");
     }
-    if (pumpFbTimer < 10.0f) {
-        blockReasons.push_back("PUMP_FB_WAIT_10S");
+    if (pumpFbTimer < config.pumpProofSec) {
+        blockReasons.push_back("PUMP_FB_WAIT");
     }
     
     permission = blockReasons.empty();
@@ -199,20 +243,29 @@ void BurnerLogic::evaluatePhase(const HeaterInputs& inputs) {
         return;
     }
     
-    if (!permission) {
-        if (inputs.fan) {
-            phase = BurnerPhase::POST_PURGE;
+    if (inputs.gasValves && inputs.fan) {
+        phase = BurnerPhase::RUNNING;
+        return;
+    }
+    
+    if (inputs.fan && !inputs.gasValves) {
+        if (permission && phase != BurnerPhase::RUNNING && phase != BurnerPhase::POST_PURGE) {
+            phase = BurnerPhase::PURGE;
         } else {
-            phase = BurnerPhase::OFF;
+            phase = BurnerPhase::POST_PURGE;
         }
         return;
     }
     
-    if (inputs.gasValves && inputs.fan) {
-        phase = BurnerPhase::RUNNING;
-    } else if (inputs.fan && !inputs.gasValves) {
-        phase = BurnerPhase::PURGE;
-    } else {
-        phase = BurnerPhase::WAIT_PUMP;
+    if (!inputs.fan && permission) {
+        phase = BurnerPhase::STANDBY;
+        return;
     }
+    
+    if (requested && pumpFbTimer < config.pumpProofSec) {
+        phase = BurnerPhase::WAIT_PUMP;
+        return;
+    }
+    
+    phase = BurnerPhase::OFF;
 }

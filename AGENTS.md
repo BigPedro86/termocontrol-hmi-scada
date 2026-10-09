@@ -125,7 +125,7 @@ Consulte também `docs/PROTOCOLO.md` para campos detalhados.
 
 Estas condições são uma camada adicional no firmware/servidor. A segurança real está na cadeia cabeada (programador de chama, STB, pressostatos, fluxostato, emergência). Para o software permitir o **queimador**:
 - Comunicação ESP32 online ✓
-- Pressão hidrostática ≥ 0.5 bar ✓
+- Pressão hidrostática ≥ 1.0 bar (PROVISÓRIO — responsável técnico define) ✓
 - Temperatura < 95°C ✓
 - Bomba circuladora LIGADA ✓
 - Sem falha de ignição ✓

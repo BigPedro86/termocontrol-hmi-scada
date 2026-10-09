@@ -50,6 +50,7 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
     HAL_ESP32* hal = (HAL_ESP32*)pvParameters;
     uint32_t lastCheck = 0;
     int goodReads = 0;
+    bool lastBuzzerState = false;
 
     auto readReg16 = [](uint8_t reg, bool& ok, HAL_ESP32* h) -> uint16_t {
         xSemaphoreTake(h->i2cMutex, portMAX_DELAY);
@@ -75,11 +76,15 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
         // Leitura GPIO
         uint16_t vals = readReg16(0x12, cycleOk, hal); // 0x12 é GPIOA no bank 0
 
+        bool currentBuzzer = hal->buzzerState;
         if (cycleOk) {
             hal->mcpFilter.updateRaw(vals, now);
-            xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
-            hal->mcp.digitalWrite(MCP_BUZZER, hal->buzzerState ? HIGH : LOW);
-            xSemaphoreGive(hal->i2cMutex);
+            if (currentBuzzer != lastBuzzerState) {
+                xSemaphoreTake(hal->i2cMutex, portMAX_DELAY);
+                hal->mcp.digitalWrite(MCP_BUZZER, currentBuzzer ? HIGH : LOW);
+                xSemaphoreGive(hal->i2cMutex);
+                lastBuzzerState = currentBuzzer;
+            }
         } else {
             hal->mcpFilter.setIoFault(true);
             goodReads = 0;
@@ -103,13 +108,14 @@ void HAL_ESP32::mcpTask(void *pvParameters) {
                 for(int i=0; i<16; i++) {
                     if (i == MCP_BUZZER || i == 7) {
                         hal->mcp.pinMode(i, OUTPUT);
-                        if (i == MCP_BUZZER) hal->mcp.digitalWrite(i, hal->buzzerState ? HIGH : LOW);
+                        if (i == MCP_BUZZER) hal->mcp.digitalWrite(i, currentBuzzer ? HIGH : LOW);
                         else hal->mcp.digitalWrite(i, LOW);
                     } else {
                         hal->mcp.pinMode(i, INPUT_PULLUP);
                     }
                 }
                 xSemaphoreGive(hal->i2cMutex);
+                lastBuzzerState = currentBuzzer;
             } else {
                 if (goodReads < 3) {
                     goodReads++;
