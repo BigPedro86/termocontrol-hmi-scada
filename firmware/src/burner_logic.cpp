@@ -196,6 +196,7 @@ void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
         blockReasons.push_back("SAFETY_CHAIN_OPEN");
     }
     if (!inputs.estopOk) {
+        requested = false;
         blockReasons.push_back("ESTOP_PRESSED");
     }
     if (inputs.lockout) {

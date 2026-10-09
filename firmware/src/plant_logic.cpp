@@ -17,8 +17,9 @@ void PlantLogic::update(BurnerLogic& b1, BurnerLogic& b2,
     b1.update(in1, dt);
     b2.update(in2, dt);
     
-    bool forceStop1 = in1.press.value < minPressure || !in1.estopOk || !in1.chainOk;
-    bool forceStop2 = in2.press.value < minPressure || !in2.estopOk || !in2.chainOk;
+    // Decisão provisória — responsável técnico confirma
+    bool forceStop1 = (in1.press.quality == Quality::OK && in1.press.value < minPressure) || !in1.estopOk;
+    bool forceStop2 = (in2.press.quality == Quality::OK && in2.press.value < minPressure) || !in2.estopOk;
     
     bool lockStart1 = tx01.isLowLevel();
     bool lockStart2 = tx01.isLowLevel();
