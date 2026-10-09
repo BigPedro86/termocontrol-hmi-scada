@@ -22,7 +22,7 @@ public:
     int getStarts() const { return 0; } // TODO: track starts
     bool getRequested() const { return requested; }
     int getLockouts24h() const { return lockoutTimes.size(); }
-    float getRunHours() const { return 0.0f; }
+    float getRunHours() const { return runHoursCont; }
 
     void startBurner();
     void stopBurner();
@@ -49,6 +49,8 @@ private:
     bool swLimitLatched;
     std::vector<uint32_t> lockoutTimes;
     float totalUptime; // Kept for other uses if needed, but lockout uses absolute epoch
+    float runHoursCont;
+    bool force24hStop;
     bool ignitionTimeout;
     
     // Discrepancy

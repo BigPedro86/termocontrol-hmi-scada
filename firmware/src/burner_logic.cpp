@@ -5,7 +5,7 @@
 
 BurnerLogic::BurnerLogic(int id, HAL* hal) : phase(BurnerPhase::OFF), permission(false), requested(false),
     purgeTimer(0), swLimitLatched(false), totalUptime(0),
-    ignitionTimeout(false), 
+    runHoursCont(0), force24hStop(false), ignitionTimeout(false), 
     discrepancy(false), discGasNoPerm(false), discGasNoFan(false), discTimer(0), noFanTimer(0),
     pumpFbTimer(0), prevCmdStart(false), prevLockout(false), swLimitResetPending(false),
     heaterId(id), hal_ptr(hal), lastTemp(0), lastSwLimit(90.0f) {
@@ -136,7 +136,9 @@ void BurnerLogic::update(const HeaterInputs& inputs, float deltaTimeS) {
     }
     
     if (phase == BurnerPhase::RUNNING) {
-        // running logic
+        runHoursCont += deltaTimeS;
+    } else {
+        runHoursCont = 0.0f;
     }
     
     if (inputs.pumpFb) {
@@ -219,6 +221,18 @@ void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
         blockReasons.push_back("SW_TEMP_LIMIT_LATCHED");
     }
     
+    if (runHoursCont >= config.continuousRunMaxSec) {
+        force24hStop = true;
+    }
+    
+    if (force24hStop && phase == BurnerPhase::OFF) {
+        force24hStop = false;
+    }
+
+    if (force24hStop) {
+        blockReasons.push_back("24H_CONTINUOUS_STOP");
+    }
+    
     lastTentativePerm = blockReasons.empty();
     
     if (discGasNoPerm) {
@@ -231,7 +245,7 @@ void BurnerLogic::checkInterlocks(const HeaterInputs& inputs) {
         blockReasons.push_back("IGNITION_TIMEOUT");
     }
     if (pumpFbTimer < config.pumpProofSec) {
-        blockReasons.push_back("PUMP_FB_WAIT");
+        blockReasons.push_back("NO_PUMP_FLOW");
     }
     
     permission = blockReasons.empty();
@@ -261,8 +275,15 @@ void BurnerLogic::evaluatePhase(const HeaterInputs& inputs) {
         phase = BurnerPhase::STANDBY;
         return;
     }
+    bool onlyPumpMissing = true;
+    for (const auto& br : blockReasons) {
+        if (br != "NO_PUMP_FLOW" && br != "NOT_REQUESTED") {
+            onlyPumpMissing = false;
+            break;
+        }
+    }
     
-    if (requested && pumpFbTimer < config.pumpProofSec) {
+    if (requested && onlyPumpMissing) {
         phase = BurnerPhase::WAIT_PUMP;
         return;
     }

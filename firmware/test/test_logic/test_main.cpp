@@ -243,6 +243,20 @@ void test_limite_software_travamento() {
     TEST_ASSERT_TRUE(b.getPermission());
 }
 
+void test_parada_24h() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false; b.update(in, 1.0f);
+    in.cmd_start = true; b.update(in, 10.0f);
+    in.fan = true;
+    in.gasValves = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+    
+    b.update(in, 86400.0f);
+    TEST_ASSERT_FALSE(b.getPermission());
+}
+
 void test_n8_lockout_initialized_on_boot() {
     HALMockTest hal;
     BurnerLogic b(0, &hal);
@@ -272,6 +286,73 @@ void test_modbus_sem_resposta() {
     in.novus.quality = Quality::COMM_LOST;
     b.update(in, 1.0f);
     TEST_ASSERT_TRUE(b.getPermission()); // Does NOT block
+}
+
+void test_n9_start_liga_bomba_e_sequencia() {
+    BurnerLogic b;
+    PumpLogic p(10);
+    HeaterInputs in = get_default_inputs();
+    
+    CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    p.update(false, false, false, false, 1.0f);
+    TEST_ASSERT_TRUE(b.getRequested());
+    TEST_ASSERT_TRUE(p.getCmd());
+    
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::WAIT_PUMP, b.getPhase());
+    
+    in.pumpFb = true;
+    b.update(in, 10.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b.getPhase());
+    
+    in.fan = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::PURGE, b.getPhase());
+    
+    in.gasValves = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+}
+
+void test_n9_running_sem_permissao() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.fan = true;
+    in.gasValves = true;
+    in.lockout = false;
+    b.update(in, 1.0f);
+    TEST_ASSERT_FALSE(b.getPermission());
+    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+}
+
+void test_n9_pos_purga_apos_running() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    apply_permission(b, in);
+    in.fan = true;
+    in.gasValves = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+    
+    in.gasValves = false;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::POST_PURGE, b.getPhase());
+}
+
+void test_n9_timer_ignicao_so_em_purge() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    apply_permission(b, in);
+    
+    b.update(in, 65.0f);
+    TEST_ASSERT_FALSE(b.isIgnitionTimeout());
+    
+    in.fan = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::PURGE, b.getPhase());
+    
+    b.update(in, 65.0f);
+    TEST_ASSERT_TRUE(b.isIgnitionTimeout());
 }
 
 void test_paradas_comportamentos() {
@@ -439,6 +520,36 @@ void test_sensor_fault_sem_limites() {
     }
     TEST_ASSERT_FALSE(limitFound);
     TEST_ASSERT_TRUE(faultFound);
+}
+
+void test_parada_24h_religa() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    apply_permission(b, in);
+    
+    in.fan = true;
+    in.gasValves = true;
+    b.update(in, 1.0f);
+    TEST_ASSERT_EQUAL(BurnerPhase::RUNNING, b.getPhase());
+    
+    b.update(in, 86399.0f);
+    TEST_ASSERT_TRUE(b.getPermission());
+    
+    b.update(in, 1.0f);
+    TEST_ASSERT_FALSE(b.getPermission());
+    
+    in.gasValves = false; 
+    b.update(in, 1.0f); 
+    TEST_ASSERT_EQUAL(BurnerPhase::POST_PURGE, b.getPhase());
+    TEST_ASSERT_FALSE(b.getPermission());
+    
+    in.fan = false; 
+    b.update(in, 1.0f); 
+    TEST_ASSERT_EQUAL(BurnerPhase::OFF, b.getPhase());
+    
+    b.update(in, 1.0f);
+    TEST_ASSERT_TRUE(b.getPermission());
+    TEST_ASSERT_EQUAL(BurnerPhase::STANDBY, b.getPhase());
 }
 
 void test_n7_discrepancy_persists_after_stop() {
@@ -968,9 +1079,14 @@ int main(int argc, char **argv) {
     RUN_TEST(test_partida_sem_chama_60s);
     RUN_TEST(test_reinicio_seguro);
     RUN_TEST(test_limite_software_travamento);
+    RUN_TEST(test_parada_24h);
     RUN_TEST(test_n8_lockout_initialized_on_boot);
     RUN_TEST(test_n8_lockout_count_reset_command);
     RUN_TEST(test_modbus_sem_resposta);
+    RUN_TEST(test_n9_start_liga_bomba_e_sequencia);
+    RUN_TEST(test_n9_running_sem_permissao);
+    RUN_TEST(test_n9_pos_purga_apos_running);
+    RUN_TEST(test_n9_timer_ignicao_so_em_purge);
     RUN_TEST(test_bomba_pos_purga);
     RUN_TEST(test_bomba_falha_sem_fb);
     RUN_TEST(test_comando_stop_aceito);
@@ -981,6 +1097,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_aquecedores_independentes);
     RUN_TEST(test_alarme_gas_sem_vento);
     RUN_TEST(test_sensor_fault_sem_limites);
+    RUN_TEST(test_parada_24h_religa);
     RUN_TEST(test_n7_discrepancy_persists_after_stop);
     RUN_TEST(test_paradas_comportamentos);
     RUN_TEST(test_conversao_4_20ma);

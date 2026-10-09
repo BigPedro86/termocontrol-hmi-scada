@@ -51,12 +51,13 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
         if (role == "Operator" || role == "Supervisor" || role == "Maintenance" || role == "Admin") {
             if (bLogic) {
                 for (const auto& br : bLogic->getBlockReasons()) {
-                    if (br != "NOT_REQUESTED" && br != "PUMP_FB_WAIT" && br != "PUMP_FB_WAIT_10S") {
+                    if (br != "NOT_REQUESTED" && br != "NO_PUMP_FLOW") {
                         return {false, br};
                     }
                 }
                 bLogic->startBurner();
             }
+            if (pLogic) pLogic->startPump();
             return {true, "START_ACCEPTED"};
         }
         return {false, "UNAUTHORIZED_ROLE"};
