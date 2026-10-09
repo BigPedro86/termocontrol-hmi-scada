@@ -16,6 +16,7 @@ export const TRANSLATIONS: Record<string, string> = {
   DISCREPANCY_GAS_WITHOUT_FAN: 'Discrepância: Gás atuado sem ventilação',
   SERVER_LOST: 'Perda de conexão com o servidor SCADA',
   PUMP_FAULT: 'Falha na bomba',
+  SYS_ESP32_RESTART: 'Controlador ESP32 reiniciado',
 };
 
 export function t(code?: string): string {

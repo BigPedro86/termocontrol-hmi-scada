@@ -13,7 +13,7 @@ Novos campos incluídos:
 - `pump`: `{ "cmd": true, "fb": true, "fault": false }`
 - `novus`: `{ "commOk": true, "pv": 71.0, "sp": 72.0, "mv": 45.0, "auto": true, "alarms": [false, false], "quality": "OK" }`
 - `tank`: Sinais físicos reais expandidos (`levelNormal`, `pressureLow`, `pumpCmd`, `pumpFb`, `isAuto`, `isLatched`, `lowLevelLatched`, `timeoutLatched`, `pumpFault`, `startsLastHour`).
-- `alarms`: `[ { "code": "TEMP_H", "severity": "H", "active": true, "acked": false, "since": 12345 } ]`
+- `alarms`: `[ { "code": "TEMP_H", "severity": "H", "active": true, "acked": false, "since": 12345 } ]` (ex: `SYS_ESP32_RESTART`, `TEMP_H`, etc).
 - `allowedActions`: Matriz pré-calculada estendida para aquecedores, tanque e sistema (ex: `{ "AQ01": ["BURNER_STOP", "PUMP_STOP"], "TX01": ["TX01_PUMP_STOP"], "SYS": ["ALARM_SILENCE", "ALARM_ACK"] }`).
 
 ### Qualidade de Medição (Quality)
