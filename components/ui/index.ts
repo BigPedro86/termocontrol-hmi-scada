@@ -8,3 +8,4 @@ export * from './AlarmStrip';
 export * from './CommChip';
 export * from './DataTable';
 export * from './PumpIndicator';
+export * from './HeaterSynopticCard';
