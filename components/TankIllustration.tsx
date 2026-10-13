@@ -69,11 +69,9 @@ const TankIllustration: React.FC<TankIllustrationProps> = ({ level, pressure, pu
 
         <g transform="translate(425, 80)">
            <circle r="6" fill={highSensor ? '#ef4444' : '#334155'} stroke="#1e293b" strokeWidth="1" />
-           <text x="12" y="4" fill="white" fontSize="8" fontWeight="bold">NÍVEL ALTO</text>
         </g>
         <g transform="translate(425, 160)">
            <circle r="6" fill={lowSensor ? '#f59e0b' : '#334155'} stroke="#1e293b" strokeWidth="1" />
-           <text x="12" y="4" fill="white" fontSize="8" fontWeight="bold">NÍVEL BAIXO</text>
         </g>
 
         <path d="M 40 220 L 120 220 L 120 190" stroke="#475569" strokeWidth="6" fill="none" />
@@ -99,24 +97,40 @@ const TankIllustration: React.FC<TankIllustrationProps> = ({ level, pressure, pu
 
         <g transform="translate(250, 45)">
            <path d="M -10 0 L 10 0 L 0 15 Z" fill="#1e293b" />
-           <rect x="-30" y="-30" width="60" height="30" rx="5" fill="#1e293b" />
-           <text textAnchor="middle" y="-10" fill="#10b981" fontSize="12" fontWeight="black" fontFamily="monospace">
-             {pressure.toFixed(2)}
-           </text>
-           <text textAnchor="middle" y="5" fill="white" fontSize="6" fontWeight="bold">BAR</text>
+           <rect x="-30" y="-30" width="60" height="30" rx="4" fill="#1e293b" stroke="#363C44" />
         </g>
       </svg>
+
+      {/* Rótulo de pressão sobre o manômetro em HTML */}
+      <div className="absolute top-7 flex flex-col items-center pointer-events-none" style={{ left: 'calc(50% - 30px)', width: 60 }}>
+        <span className="label font-bold text-tc-equip-on tabular-nums">{pressure.toFixed(2)}</span>
+        <span className="label text-tc-text-muted">BAR</span>
+      </div>
+
+      {/* Indicadores de nível em HTML */}
+      <div className="absolute top-6 right-8 flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${highSensor ? 'bg-tc-alarm-crit' : 'bg-tc-border'}`}></span>
+          <span className="label text-tc-text-muted">NÍVEL ALTO</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${lowSensor ? 'bg-tc-alarm-warn' : 'bg-tc-border'}`}></span>
+          <span className="label text-tc-text-muted">NÍVEL BAIXO</span>
+        </div>
+      </div>
 
       <div className="absolute top-6 left-8 flex flex-col gap-1">
         <span className="label text-tc-text-muted">Monitoramento de Expansão</span>
         <div className="flex items-center gap-4 mt-1">
           <div className="bg-tc-surface px-3 py-1.5 rounded border border-tc-border backdrop-blur-sm">
             <span className="label text-tc-text-muted mr-2">NÍVEL:</span>
-            <span className="text-sm font-bold text-tc-action">{level}%</span>
+            <span className="title-card text-tc-text tabular-nums">{level}%</span>
           </div>
           <div className="bg-tc-surface px-3 py-1.5 rounded border border-tc-border backdrop-blur-sm">
             <span className="label text-tc-text-muted mr-2">BOMBA:</span>
-            <span className={`text-sm font-bold ${isPumpActive ? 'text-tc-equip-on' : 'text-tc-text-muted'}`}>{pumpStatus}</span>
+            <span className={`title-card ${isPumpActive ? 'text-tc-equip-on' : 'text-tc-text-muted'}`}>
+              {pumpStatus === 'On' ? 'Ligada' : pumpStatus === 'Fault' ? 'Falha' : 'Desligada'}
+            </span>
           </div>
         </div>
       </div>

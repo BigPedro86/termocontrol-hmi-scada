@@ -129,7 +129,7 @@ const BoilerIllustration: React.FC<BoilerIllustrationProps> = ({ burnerPhase, mo
               isLockout ? 'bg-tc-alarm-crit animate-ping' :
               'bg-tc-border'
             }`}></div>
-            <span className={`text-[10px] font-bold ${
+            <span className={`label ${
               isActive ? 'text-tc-action' :
               isPurging ? 'text-tc-action' :
               isLockout ? 'text-tc-alarm-crit' :
@@ -140,8 +140,8 @@ const BoilerIllustration: React.FC<BoilerIllustrationProps> = ({ burnerPhase, mo
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${pumpRunning ? 'bg-tc-equip-on animate-pulse' : 'bg-tc-border'}`}></div>
-            <span className={`text-[10px] font-bold ${pumpRunning ? 'text-tc-equip-on' : 'text-tc-text-muted'}`}>
-              BOMBA: {pumpRunning ? 'LIGADA' : 'OFF'}
+            <span className={`label ${pumpRunning ? 'text-tc-equip-on' : 'text-tc-text-muted'}`}>
+              BOMBA: {pumpRunning ? 'LIGADA' : 'DESLIGADA'}
             </span>
           </div>
         </div>

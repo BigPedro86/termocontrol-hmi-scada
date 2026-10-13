@@ -23,21 +23,21 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
   const renderValue = () => {
     if (quality === 'COMM_LOST' || (quality === 'OK' && (value === null || value === undefined))) {
       return (
-        <span className="h-8 box-border flex items-center px-2 rounded border border-tc-border pattern-no-data text-tc-text-muted text-xs font-semibold tracking-wider">
+        <span className="h-8 box-border flex items-center px-2.5 rounded border border-tc-border pattern-no-data text-tc-text-muted label">
           SEM DADOS
         </span>
       );
     }
     if (quality === 'FAULT') {
       return (
-        <span className="h-8 self-start flex items-center px-2.5 rounded bg-tc-alarm-crit-fill text-white font-bold tracking-wider">
+        <span className="h-8 self-start flex items-center px-2.5 rounded bg-tc-alarm-crit-fill text-white label">
           FALHA
         </span>
       );
     }
     if (quality === 'NOT_MEASURED') {
       return (
-        <span className="h-8 flex items-center text-base font-semibold text-tc-text-muted">
+        <span className="h-8 flex items-center body font-semibold text-tc-text-muted">
           N/M
         </span>
       );
@@ -54,7 +54,7 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
     return (
       <span className="flex items-baseline gap-1">
         <span className={valueClass}>{displayStr}</span>
-        {unit && <span className="text-tc-text-muted">{unit}</span>}
+        {unit && <span className="body text-tc-text-muted">{unit}</span>}
       </span>
     );
   };
