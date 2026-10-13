@@ -176,15 +176,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     httpUrl = httpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://').replace(/\/+$/, '');
     axios.get(`${httpUrl}/settings`, { headers: { Authorization: `Bearer ${currentUser.token}` } })
       .then(res => {
-         if (res.data && Object.keys(res.data).length > 0) {
-             setLocalSettings(prev => ({ ...prev, ...res.data }));
-         }
+        if (res.data && Object.keys(res.data).length > 0) {
+          // O endereço do servidor é deste navegador: nunca vem do banco
+          const { endpoint: _e, protocol: _p, ...rest } = res.data;
+          setLocalSettings(prev => ({ ...prev, ...rest }));
+        }
       })
       .catch(err => console.error('Erro ao carregar settings do servidor:', err));
 
     axios.get(`${httpUrl}/alarms`, { headers: { Authorization: `Bearer ${currentUser.token}` } })
       .then(res => {
-         if (res.data) setActiveAlarms(res.data);
+        if (res.data) setActiveAlarms(res.data);
       })
       .catch(err => console.error('Erro ao carregar alarmes:', err));
 
@@ -192,15 +194,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       axios.get(`${httpUrl}/audit`, { headers: { Authorization: `Bearer ${currentUser.token}` } })
         .then(res => {
           if (res.data) {
-             setLogs(res.data.map((l: any) => ({
-                id: l.id?.toString() || Date.now().toString(),
-                timestamp: new Date(l.timestamp).toLocaleString(),
-                equipment: l.target || 'System',
-                type: l.target === 'System' ? 'Login' : 'Command',
-                description: `${l.command} → ${l.value} (${l.result})`,
-                user: l.username,
-                severity: 'Info' as const
-             })));
+            setLogs(res.data.map((l: any) => ({
+              id: l.id?.toString() || Date.now().toString(),
+              timestamp: new Date(l.timestamp).toLocaleString(),
+              equipment: l.target || 'System',
+              type: l.target === 'System' ? 'Login' : 'Command',
+              description: `${l.command} → ${l.value} (${l.result})`,
+              user: l.username,
+              severity: 'Info' as const
+            })));
           }
         })
         .catch(err => console.error('Erro ao carregar auditoria:', err));
@@ -214,17 +216,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser?.token]);
 
   const setSettings = useCallback(async (newSettings: AppSettings) => {
-      setLocalSettings(newSettings);
-      if (currentUser?.token && currentUser.role === UserRole.ADMIN) {
-          try {
-             let httpUrl = newSettings.endpoint;
-             if (!httpUrl.startsWith('ws://') && !httpUrl.startsWith('wss://') && !httpUrl.startsWith('http://') && !httpUrl.startsWith('https://')) httpUrl = `http://${httpUrl}`;
-             httpUrl = httpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://').replace(/\/+$/, '');
-             await axios.put(`${httpUrl}/settings`, newSettings, { headers: { Authorization: `Bearer ${currentUser.token}` }});
-          } catch (e) {
-             console.error('Erro ao salvar settings no servidor:', e);
-          }
+    setLocalSettings(newSettings);
+    if (currentUser?.token && currentUser.role === UserRole.ADMIN) {
+      try {
+        let httpUrl = newSettings.endpoint;
+        if (!httpUrl.startsWith('ws://') && !httpUrl.startsWith('wss://') && !httpUrl.startsWith('http://') && !httpUrl.startsWith('https://')) httpUrl = `http://${httpUrl}`;
+        httpUrl = httpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://').replace(/\/+$/, '');
+        await axios.put(`${httpUrl}/settings`, newSettings, { headers: { Authorization: `Bearer ${currentUser.token}` } });
+      } catch (e) {
+        console.error('Erro ao salvar settings no servidor:', e);
       }
+    }
   }, [currentUser, setLocalSettings]);
 
   // ─── Ack do ESP32 ─────────────────────────────────────────────────────────
@@ -407,9 +409,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!httpUrl.startsWith('ws://') && !httpUrl.startsWith('wss://') && !httpUrl.startsWith('http://') && !httpUrl.startsWith('https://')) httpUrl = `http://${httpUrl}`;
     httpUrl = httpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://').replace(/\/+$/, '');
     try {
-        await axios.post(`${httpUrl}/alarms/${id}/ack`, {}, { headers: { Authorization: `Bearer ${currentUser.token}` } });
+      await axios.post(`${httpUrl}/alarms/${id}/ack`, {}, { headers: { Authorization: `Bearer ${currentUser.token}` } });
     } catch (e) {
-        console.error('Erro ao confirmar alarme:', e);
+      console.error('Erro ao confirmar alarme:', e);
     }
   }, [currentUser?.token, settings.endpoint]);
 
@@ -422,7 +424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (hasUnacked) {
       audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
+
       const playBeep = () => {
         if (!audioCtx) return;
         const osc = audioCtx.createOscillator();

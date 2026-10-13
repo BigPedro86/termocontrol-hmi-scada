@@ -29,6 +29,7 @@ let postPurgeTimer = 0;
 let ws;
 function connect() {
   ws = new WebSocket(url);
+  ws.on('error', () => console.log('Servidor indisponível, tentando de novo em 2 s...'));
   ws.on('open', () => {
     console.log('Fake ESP32 conectado.');
   });
@@ -55,7 +56,8 @@ function connect() {
                accepted = true;
                reason = 'START_ACCEPTED';
             }
-          } else if (msg.command === 'BURNER_STOP') {
+          } else if (msg.command === 'BURNER_STOP' || msg.command === 'PUMP_STOP') {
+            // Como no firmware: PUMP_STOP também retira o queimador
             requested = false;
             if (phase !== 'OFF' && phase !== 'POST_PURGE') {
                 phase = 'POST_PURGE';
@@ -168,6 +170,9 @@ function sendState() {
   } else if (requested || phase !== 'OFF') {
       payload.allowedActions['AQ01'].push('BURNER_STOP');
   }
+  // Paradas sempre oferecidas (regra 2), como no firmware
+  if (!payload.allowedActions['AQ01'].includes('BURNER_STOP')) payload.allowedActions['AQ01'].push('BURNER_STOP');
+  payload.allowedActions['AQ01'].push('PUMP_STOP');
 
   if (emergency) h.burner.blockReasons.push('ESTOP_PRESSED');
   if (lflLockout) h.burner.blockReasons.push('LFL_LOCKOUT');
