@@ -49,3 +49,16 @@ Ver: [ack.exemplo.json](protocolo/ack.exemplo.json)
 * `NOT_AUTHORIZED`: Perfil do usuário não tem permissão para a ação no target específico
 * `INVALID_VALUE`: Valor associado fora da faixa ou inválido
 * `NOT_IN_STATE`: Estado não permite este comando (ex: reset sem falha ativa)
+
+## 4. Alterações de 13/10/2026 (correções da análise A-1 a A-12)
+
+Feitas nas três camadas, conforme a regra 15 do `AGENTS.md`.
+
+- **ESP32 → Servidor:** o formato continua PLANO. Cada alarme agora traz `description`, e `acked` reflete o reconhecimento real. `novus.auto` passa a ser `null` (N/M) até o modo do Novus ser lido.
+- **Servidor → IHM:** o `state` vai **sempre** com envelope: `{ "type": "state", "payload": { ... } }`. Os alarmes não vão mais dentro do `state`; seguem só por `{ "type": "alarm_update", "alarms": [...] }` (formato do banco, com `id`). Uma IHM recém-conectada, com ou sem login, recebe o `alarm_update` atual na hora.
+- **IHM → Servidor (`command`):** a IHM envia `id` (até 64 caracteres `[A-Za-z0-9_-]`) e `reason`. O servidor repassa o mesmo `id` ao ESP32, e o `ack` volta com ele, para a tela casar a resposta com o comando.
+- **Servidor → IHM (`ack`):** com o ESP32 fora, o servidor responde na hora `{ "type": "ack", "id", "accepted": false, "reason": "DEVICE_OFFLINE" }` e audita.
+- **Alvo `SYS`:** o firmware aceita `ALARM_ACK` (value = código, ex. `AQ01_TEMP_HH`, ou vazio = `ALL`) e `ALARM_SILENCE`. O `POST /alarms/:id/ack` do servidor repassa `ALARM_ACK` com o código ao ESP32.
+- **`allowedActions`:** `BURNER_START` aparece com o queimador parado quando os únicos motivos são `NOT_REQUESTED` e `NO_PUMP_FLOW` (mesma regra que o `handleCommand` já usava). A permissão de saída continua exigindo a lista vazia.
+- **Perda do ESP32:** além do `device_offline`, o servidor marca temperatura, pressão e Novus como `COMM_LOST` com valor `null` e esvazia `allowedActions`.
+- Códigos de recusa reais do firmware: `UNAUTHORIZED_ROLE`, `UNKNOWN_COMMAND`, `UNKNOWN_TARGET`, `TEMP_STILL_HIGH`, `CONDITION_STILL_ACTIVE`, `TANK_LEVEL_STILL_LOW`. O motivo de bloqueio da cadeia é `SAFETY_CHAIN_OPEN` (não `CHAIN_NOT_OK`) e o de pressão é `PRESSURE_OUT_OF_RANGE` (não `LOW_PRESSURE`).

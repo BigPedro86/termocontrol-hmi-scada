@@ -119,6 +119,7 @@ export function syncAlarmsFromDevice(deviceAlarms: any[]) {
 
     // Levanta os alarmes que vieram ativos do dispositivo
     for (const da of deviceAlarms) {
+        if (!da || typeof da.code !== 'string' || !da.code.includes('_')) continue; // ignora malformado
         if (da.active) {
             // No ESP32, "code" pode incluir o equipamento, ex: "AQ01_TEMP_H"
             // Vamos separar por heurística ou usar como tipo.
@@ -135,11 +136,12 @@ export function syncAlarmsFromDevice(deviceAlarms: any[]) {
     const activeLocal = getActiveAlarms();
     for (const local of activeLocal) {
         if (local.cleared) continue; // Já normalizado, só aguardando ACK
+        if (local.equipment === 'SYS' && local.type === 'COMM_LOST') continue; // alarme do próprio servidor
 
         // Se o alarme local não vier na lista do ESP32 (ou vier como active: false),
         // significa que o problema acabou.
         const code = `${local.equipment}_${local.type}`;
-        const match = deviceAlarms.find(da => da.code === code);
+        const match = deviceAlarms.find(da => da && da.code === code);
         
         if (!match || !match.active) {
             clearAlarm(local.equipment, local.type);

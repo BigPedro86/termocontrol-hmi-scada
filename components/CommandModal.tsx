@@ -26,7 +26,20 @@ const TRANSLATE_REASON: Record<string, string> = {
   'INVALID_TARGET': 'Alvo inválido',
   'INVALID_COMMAND': 'Comando não permitido ou desconhecido',
   'NOT_AUTHORIZED': 'Perfil não autorizado para este comando',
-  'INVALID_VALUE': 'Valor fornecido inválido'
+  'INVALID_VALUE': 'Valor fornecido inválido',
+  // Códigos reais do firmware (command_handler.cpp / burner_logic.cpp)
+  'SAFETY_CHAIN_OPEN': 'Cadeia de segurança aberta',
+  'TANK_LOW_LEVEL': 'Nível baixo no tanque de expansão',
+  'IO_MODULE_FAULT': 'Falha no módulo de E/S',
+  'PRESSURE_OUT_OF_RANGE': 'Pressão de água fora da faixa',
+  'DISCREPANCY_GAS_WITHOUT_FAN': 'Discrepância: gás aberto sem ventilador',
+  'UNAUTHORIZED_ROLE': 'Perfil não autorizado para este comando',
+  'UNKNOWN_COMMAND': 'Comando desconhecido',
+  'UNKNOWN_TARGET': 'Alvo desconhecido',
+  'TEMP_STILL_HIGH': 'Temperatura ainda alta para rearmar',
+  'CONDITION_STILL_ACTIVE': 'Condição ainda ativa',
+  'TANK_LEVEL_STILL_LOW': 'Nível do tanque ainda baixo',
+  'DEVICE_OFFLINE': 'ESP32 sem comunicação: comando não enviado',
 };
 
 const translate = (reason: string | undefined) => {
@@ -211,15 +224,15 @@ const CommandModal: React.FC<CommandModalProps> = ({ heater, onClose }) => {
             <div className="grid grid-cols-3 gap-3 p-4 bg-tc-surface-2 rounded border border-tc-border">
               <div className="text-center">
                 <span className="label text-tc-text-muted block">PV (Novus)</span>
-                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk ? `${heater.novus.pv.toFixed(1)}°C` : 'SEM COM.'}</span>
+                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk && heater.novus.pv != null ? `${heater.novus.pv.toFixed(1)}°C` : 'SEM COM.'}</span>
               </div>
               <div className="text-center">
                 <span className="label text-tc-text-muted block">SP (Novus)</span>
-                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk ? `${heater.novus.sp.toFixed(1)}°C` : 'SEM COM.'}</span>
+                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk && heater.novus.sp != null ? `${heater.novus.sp.toFixed(1)}°C` : 'SEM COM.'}</span>
               </div>
               <div className="text-center">
                 <span className="label text-tc-text-muted block">MV (Modulação)</span>
-                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk ? `${heater.novus.mv.toFixed(1)}%` : 'SEM COM.'}</span>
+                <span className="text-lg font-bold text-tc-text">{heater.novus.commOk && heater.novus.mv != null ? `${heater.novus.mv.toFixed(1)}%` : 'SEM COM.'}</span>
               </div>
             </div>
           </div>

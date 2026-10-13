@@ -3,7 +3,8 @@
 
 AlarmEngine::AlarmEngine(HAL* hardware) : hal(hardware), silenced(false) {
     // 5. No boot, um alarme momentâneo "Controlador ESP32 reiniciado" (severidade H), que fica até ser reconhecido.
-    updateAlarm("SYS_ESP32_RESTART", "Controlador ESP32 reiniciado", 'H', true, false);
+    // Travado (latched) para ser publicado até alguém reconhecer.
+    updateAlarm("SYS_ESP32_RESTART", "Controlador ESP32 reiniciado", 'H', true, true);
     // make it inactive immediately so it clears when acked
     for (auto& a : alarms) {
         if (a.code == "SYS_ESP32_RESTART") {
@@ -24,6 +25,8 @@ void AlarmEngine::updateAlarm(const std::string& code, const std::string& desc, 
                 if (isLatchable) a.latched = true;
             } else if (!condition && a.active) {
                 a.active = false;
+                // Já reconhecido durante a ocorrência: ao normalizar, destrava.
+                if (a.acked) a.latched = false;
             }
             return;
         }
@@ -101,11 +104,15 @@ void AlarmEngine::ackAlarm(const std::string& code) {
     for (auto& a : alarms) {
         if (code == "ALL" || a.code == code) {
             a.acked = true;
+            // Reconhecido depois de normalizar: destrava (ISA-18.2).
+            // Se ainda estiver ativo, continua publicado até normalizar.
+            if (!a.active) a.latched = false;
         }
     }
 }
 
 void AlarmEngine::silenceSiren() {
+    // Silenciar não reconhece: o alarme continua na lista.
     silenced = true;
 }
 

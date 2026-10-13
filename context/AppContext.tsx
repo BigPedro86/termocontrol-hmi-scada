@@ -53,6 +53,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // S4: 30 minutos de inatividade
+const STOP_COMMANDS = new Set(['BURNER_STOP', 'PUMP_STOP', 'TX01_PUMP_STOP']);
+const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOnline, setIsOnline] = useState(false);
@@ -202,6 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .catch(err => console.error('Erro ao carregar auditoria:', err));
     };
 
+    if (currentUser.role !== UserRole.ADMIN) return; // /audit é restrito a Admin
     fetchLogs();
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
@@ -272,7 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (state.tank) setTank(state.tank as TankState);
         if (state.glp) setGlp(state.glp as GLPState);
         if (state.allowedActions) setAllowedActions(state.allowedActions);
-        if (state.alarms) setActiveAlarms(state.alarms);
+        // Alarmes chegam só por 'alarm_update' (formato do servidor, com id para reconhecer)
       },
       handleOnline,
       handleOffline,
@@ -358,19 +363,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Sem login não pode enviar comandos
       return false;
     }
-    if (settings.supervisorOnly && currentUser.role === UserRole.OPERATOR) {
+    // Regra 2 / achado C2: parada nunca é bloqueada pela tela, para nenhum perfil.
+    // Quem decide permissões é o ESP32 (regra 8); a tela só usa allowedActions.
+    const isStop = STOP_COMMANDS.has(cmd);
+    if (!isStop && settings.supervisorOnly && currentUser.role === UserRole.OPERATOR) {
+      addLog('Command', equipmentId, `${cmd} não enviado: perfil Operador restrito (supervisorOnly)`, 'Warning');
       return false;
     }
     if (!driver) return false;
 
+    const cmdId = newId();
     addLog('Command', equipmentId, `${cmd} → ${value}${reason ? ` (Motivo: ${reason})` : ''}`);
-    const success = await driver.sendCommand(equipmentId, cmd, value);
-
-    if (success && !equipmentId.startsWith('GLP')) {
-      const cmdId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+    const isGLP = equipmentId.startsWith('GLP');
+    if (!isGLP) {
+      // Registra antes de enviar: o ack pode chegar muito rápido
       setPendingCommands(prev => [...prev, {
         id: cmdId, equipmentId, cmd, value, sentAt: Date.now(), status: 'pending',
       }]);
+    }
+    const success = await driver.sendCommand(equipmentId, cmd, value, cmdId, reason);
+    if (!success && !isGLP) {
+      setPendingCommands(prev => prev.filter(p => p.id !== cmdId));
+      addLog('Alarm', equipmentId, `${cmd} não enviado: sem conexão com o servidor`, 'Warning');
     }
     return success;
   };
@@ -401,8 +415,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ─── A2: Notificação Sonora (Web Audio API) — funciona SEM login ──────────
 
+  const hasUnacked = activeAlarms.some(a => !a.acked);
   useEffect(() => {
-    const hasUnacked = activeAlarms.some(a => !a.acked);
     let intervalId: any;
     let audioCtx: AudioContext | null = null;
 
@@ -430,7 +444,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (intervalId) clearInterval(intervalId);
       if (audioCtx) audioCtx.close();
     };
-  }, [activeAlarms]);
+  }, [hasUnacked]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 

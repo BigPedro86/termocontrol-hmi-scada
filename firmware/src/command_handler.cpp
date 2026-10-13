@@ -30,6 +30,21 @@ CommandResult CommandHandler::handleCommand(const std::string& target, const std
         return {false, "UNKNOWN_COMMAND"};
     }
 
+    // Comandos globais de alarme (alvo SYS). Publicados em allowedActions["SYS"].
+    // Qualquer perfil logado pode reconhecer e silenciar (o servidor já exige login).
+    if (target == "SYS") {
+        if (command == "ALARM_ACK") {
+            std::string ackVal = value.empty() ? "ALL" : value;
+            if (alarms) alarms->ackAlarm(ackVal);
+            return {true, "ALARM_ACKNOWLEDGED"};
+        }
+        if (command == "ALARM_SILENCE") {
+            if (alarms) alarms->silenceSiren();
+            return {true, "ALARM_SILENCED"};
+        }
+        return {false, "UNKNOWN_COMMAND"};
+    }
+
     // Validar Target
     if (target != "AQ01" && target != "AQ02") {
         return {false, "INVALID_TARGET"};
@@ -138,8 +153,16 @@ std::vector<std::string> CommandHandler::getAllowedActions(const std::string& ta
     actions.push_back("BURNER_STOP");
     actions.push_back("PUMP_STOP");
     
-    if (bLogic && bLogic->getBlockReasons().empty()) {
-        actions.push_back("BURNER_START");
+    // BURNER_START: mesma regra de handleCommand(). Com o queimador parado,
+    // NOT_REQUESTED (sem pedido) e NO_PUMP_FLOW (bomba ainda não provou fluxo)
+    // estão sempre presentes e são resolvidos pela própria partida. Qualquer
+    // outro motivo bloqueia. A permissão real continua exigindo a lista vazia.
+    if (bLogic && !bLogic->getRequested()) {
+        bool startable = true;
+        for (const auto& br : bLogic->getBlockReasons()) {
+            if (br != "NOT_REQUESTED" && br != "NO_PUMP_FLOW") { startable = false; break; }
+        }
+        if (startable) actions.push_back("BURNER_START");
     }
     actions.push_back("PUMP_START");
     

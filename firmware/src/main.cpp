@@ -30,6 +30,10 @@ AlarmEngine alarms(&hal);
 WebSocketsClient webSocket;
 Preferences preferences;
 bool isServerConnected = false;
+// Última mensagem recebida do servidor (ele envia ping a cada 2 s).
+// Detecta TCP "meio aberto", que o evento DISCONNECTED não pega.
+unsigned long lastServerMsgMs = 0;
+const unsigned long SERVER_SILENCE_MS = 10000; // PROVISÓRIO — responsável técnico define (ver C1)
 unsigned long lastStateSent = 0;
 unsigned long lastLogicUpdate = 0;
 
@@ -50,7 +54,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         isServerConnected = false;
     } else if (type == WStype_CONNECTED) {
         isServerConnected = true;
+        lastServerMsgMs = millis();
     } else if (type == WStype_TEXT) {
+        lastServerMsgMs = millis();
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payload);
         if (error) return;
@@ -131,6 +137,8 @@ void setup() {
     std::string url = "/?device=true&secret=" + config.deviceSecret;
     webSocket.begin(config.serverIp.c_str(), config.serverPort, url.c_str());
     webSocket.onEvent(webSocketEvent);
+    webSocket.setReconnectInterval(2000);
+    webSocket.enableHeartbeat(5000, 3000, 2);
     
     lastLogicUpdate = hal.millis();
 }
@@ -199,10 +207,10 @@ void loop() {
     
     // Alarms process
     alarms.process(0, in1.temp.value, in1.press.value, in1.temp.quality != Quality::OK, in1.press.quality != Quality::OK,
-                   in1.lockout, pump1.isFault(), burner1.hasDiscrepancy(), false, burner1.isIgnitionTimeout(), !in1.novus.commOk);
+                   in1.lockout, pump1.isFault(), burner1.hasDiscGasNoPerm(), burner1.hasDiscGasNoFan(), burner1.isIgnitionTimeout(), !in1.novus.commOk);
                    
     alarms.process(1, in2.temp.value, in2.press.value, in2.temp.quality != Quality::OK, in2.press.quality != Quality::OK,
-                   in2.lockout, pump2.isFault(), burner2.hasDiscrepancy(), false, burner2.isIgnitionTimeout(), !in2.novus.commOk);
+                   in2.lockout, pump2.isFault(), burner2.hasDiscGasNoPerm(), burner2.hasDiscGasNoFan(), burner2.isIgnitionTimeout(), !in2.novus.commOk);
 
     // Apply outputs
     hal.setBurnerCmd(0, burner1.getPermission());
@@ -211,6 +219,12 @@ void loop() {
     hal.setPumpCmd(1, pump2.getCmd());
     hal.setTx01PumpCmd(tx01.getState().pumpCmd);
     hal.setBuzzer(alarms.isSirenOn());
+
+    // Servidor mudo por mais de SERVER_SILENCE_MS: trata como desconectado.
+    if (isServerConnected && (now - lastServerMsgMs) > SERVER_SILENCE_MS) {
+        isServerConnected = false;
+        webSocket.disconnect(); // a biblioteca reconecta sozinha
+    }
 
     static bool wasServerConnected = false;
     if (wasServerConnected && !isServerConnected && config.onServerLoss == STOP_BURNERS) {

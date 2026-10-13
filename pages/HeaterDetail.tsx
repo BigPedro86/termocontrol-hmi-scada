@@ -24,17 +24,19 @@ const HeaterDetail: React.FC = () => {
     if (!currentUser?.token || settings.useSimulation || !id) return;
     const httpUrl = settings.endpoint.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://').replace(/\/+$/, '');
     const fetchHistory = () => {
-      axios.get(`${httpUrl}/history?equipment=${id}&limit=60`, { headers: { Authorization: `Bearer ${currentUser.token}` } })
+      const from = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // última hora
+      axios.get(`${httpUrl}/history?equipment=${id}&from=${encodeURIComponent(from)}`, { headers: { Authorization: `Bearer ${currentUser.token}` } })
         .then(res => {
           const formatted = res.data.map((p: any) => {
             const date = new Date(p.ts);
             const timeLabel = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-            const heaterData = p.heaters?.[id!];
+            // O servidor já devolve o ponto do equipamento pedido, plano.
+            // null (não 0) para o gráfico mostrar falha em vez de inventar valor (regra 6).
             return {
               time: timeLabel,
-              temp: heaterData?.temp ?? 0,
-              pres: heaterData?.pressure ?? 0,
-              setpoint: heaterData?.setpoint ?? 0,
+              temp: p.temp ?? null,
+              pres: p.pressure ?? null,
+              setpoint: p.setpoint ?? null,
             };
           });
           setRealTrendData(formatted);

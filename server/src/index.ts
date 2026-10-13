@@ -5,6 +5,7 @@ import http from 'http';
 import cors from 'cors';
 import { URL } from 'url';
 import path from 'path';
+import crypto from 'crypto';
 
 import {
     seedAdminIfNeeded,
@@ -264,10 +265,24 @@ setInterval(() => {
         
         raiseAlarm('SYS', 'COMM_LOST', 'Perda de Comunicação com ESP32 (>6s)', 'Danger');
         broadcastAlarms();
+
+        // Regra 6: sem comunicação, nenhum valor antigo continua parecendo válido
+        markStateCommLost();
+        broadcastState();
         
         broadcastToHMI(JSON.stringify({ type: 'device_offline' }));
     }
 }, 2000);
+
+function markStateCommLost() {
+    currentState.heaters = currentState.heaters.map(h => ({
+        ...h,
+        temp: { value: null as any, quality: 'COMM_LOST' },
+        press: { value: null as any, quality: 'COMM_LOST' },
+        novus: { ...h.novus, commOk: false, pv: null as any, sp: null as any, mv: null as any, quality: 'COMM_LOST' },
+    }));
+    currentState.allowedActions = {}; // nada a oferecer sem o ESP32
+}
 
 // ─── Rate Limiting (S2) ───────────────────────────────────────────────────────
 
@@ -315,6 +330,7 @@ function mergeHeaters(incoming: Partial<HeaterState>[]): HeaterState[] {
         if (!update) return known;
         const result = { ...known };
         for (const key of Object.keys(known)) {
+            if (key === 'name') continue; // nome de exibição é do servidor (o ESP32 manda só o id)
             if (key in update) {
                 (result as any)[key] = (update as any)[key];
             }
@@ -430,6 +446,8 @@ wss.on('connection', (ws: WebSocket) => {
     if (!aws.isDevice) {
         aws.send(JSON.stringify({ type: 'state', payload: buildPayload() }));
         aws.send(JSON.stringify({ type: deviceIsOnline ? 'device_online' : 'device_offline' }));
+        // Supervisão sem login (regra 7): a tela recebe os alarmes atuais já na conexão
+        aws.send(JSON.stringify({ type: 'alarm_update', alarms: getActiveAlarms() }));
         aws.on('close', closeHandler);
     } else {
         const pingInterval = setInterval(() => {
@@ -469,24 +487,18 @@ wss.on('connection', (ws: WebSocket) => {
                 }
                 
                 // Sincroniza alarmes direto do ESP32
-                const { syncAlarmsFromDevice } = require('./alarms');
-                syncAlarmsFromDevice(data.alarms || []);
-                broadcastAlarms();
+                try {
+                    const { syncAlarmsFromDevice } = require('./alarms');
+                    syncAlarmsFromDevice(Array.isArray(data.alarms) ? data.alarms : []);
+                    broadcastAlarms();
+                } catch (e) {
+                    // Alarme malformado não pode impedir o estado de chegar à tela
+                    console.error('[Server] Erro ao sincronizar alarmes do ESP32:', e);
+                }
                 
-                // Agora enviamos o estado completo para os HMIs usando o currentState + alarms do device + glp do server
-                const fullState = {
-                    type: 'state',
-                    heaters: currentState.heaters,
-                    tank: currentState.tank,
-                    buzzer: currentState.buzzer,
-                    seq: currentState.seq,
-                    uptime_s: currentState.uptime_s,
-                    estopOk: currentState.estopOk,
-                    allowedActions: currentState.allowedActions,
-                    alarms: data.alarms || [],
-                    glp: glpState
-                };
-                broadcastToHMI(JSON.stringify(fullState));
+                // Formato único para a IHM: { type:'state', payload }. Os alarmes seguem
+                // por 'alarm_update' (formato do banco, com id para o reconhecimento).
+                broadcastState();
                 return;
             }
 
@@ -533,16 +545,26 @@ wss.on('connection', (ws: WebSocket) => {
 
 
 
+                // id vindo da IHM permite casar o ack com o comando pendente na tela
+                const cmdId = (typeof data.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(data.id)) ? data.id : crypto.randomUUID();
+
+                // ESP32 fora: responde na hora em vez de deixar o operador esperando
+                if (!deviceIsOnline) {
+                    writeAudit({ timestamp: new Date().toISOString(), username: user.username, role: user.role, ip: aws.ip, target: data.target, command: data.command, value: data.value, result: 'DEVICE_OFFLINE' });
+                    aws.send(JSON.stringify({ type: 'ack', id: cmdId, accepted: false, reason: 'DEVICE_OFFLINE' }));
+                    return;
+                }
+
                 // Prepara a mensagem para o ESP32 carimbando o user e role
                 const commandToDevice = {
                     type: 'command',
-                    id: data.id || crypto.randomUUID(),
+                    id: cmdId,
                     target: data.target,
                     command: data.command,
                     value: data.value,
                     user: user.username,
                     role: user.role,
-                    reason: data.reason || 'S/N'
+                    reason: typeof data.reason === 'string' ? data.reason.slice(0, 200) : 'S/N'
                 };
                 pendingCommands.set(commandToDevice.id, {
                     user: commandToDevice.user,
@@ -631,12 +653,19 @@ app.post('/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
     const { username, password, role } = req.body ?? {};
     const validRoles: UserRole[] = ['Operator', 'Supervisor', 'Maintenance', 'Admin'];
     if (!username || !password || !validRoles.includes(role)) { res.status(400).json({ error: 'username, password e role são obrigatórios.' }); return; }
-    try { const u = createUser(username, password, role as UserRole); res.status(201).json({ id: u.id, username: u.username, role: u.role }); }
+    const admin = (req as any).user as TokenPayload;
+    try {
+        const u = createUser(username, password, role as UserRole);
+        writeAudit({ timestamp: new Date().toISOString(), username: admin.username, role: admin.role, ip: req.socket.remoteAddress ?? 'unknown', target: 'USERS', command: 'CREATE_USER', value: { username, role }, result: 'success' });
+        res.status(201).json({ id: u.id, username: u.username, role: u.role });
+    }
     catch (e: any) { res.status(409).json({ error: e.message }); }
 });
 
 app.delete('/users/:username', requireAuth, requireAdmin, (req: Request, res: Response) => {
     if (!deleteUser(req.params.username)) { res.status(404).json({ error: 'Usuário não encontrado.' }); return; }
+    const admin = (req as any).user as TokenPayload;
+    writeAudit({ timestamp: new Date().toISOString(), username: admin.username, role: admin.role, ip: req.socket.remoteAddress ?? 'unknown', target: 'USERS', command: 'DELETE_USER', value: { username: req.params.username }, result: 'success' });
     dropUserSessions(req.params.username);
     res.json({ ok: true });
 });
@@ -668,12 +697,20 @@ app.put('/settings', requireAuth, requireAdmin, (req: Request, res: Response) =>
     }
     
     try {
+        const before = getSettings();
+        const admin = (req as any).user as TokenPayload;
         const updateStmt = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
         db.transaction(() => {
             for (const [key, value] of Object.entries(newSettings)) {
                 updateStmt.run(key, JSON.stringify(value));
             }
         })();
+        // Regra 9: alteração de configuração com valor antigo e novo
+        for (const [key, value] of Object.entries(newSettings)) {
+            if (JSON.stringify(before[key]) !== JSON.stringify(value)) {
+                writeAudit({ timestamp: new Date().toISOString(), username: admin.username, role: admin.role, ip: req.socket.remoteAddress ?? 'unknown', target: 'SETTINGS', command: key, value: { old: before[key] ?? null, new: value }, result: 'success' });
+            }
+        }
         res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao salvar configurações.' });
@@ -757,9 +794,22 @@ app.get('/alarms', (_req, res) => {
 });
 
 app.post('/alarms/:id/ack', requireAuth, (req: Request, res: Response) => {
-    const user = (req as any).user?.username || 'unknown';
+    const tokenUser = (req as any).user as TokenPayload;
+    const user = tokenUser?.username || 'unknown';
+    const alarm = getActiveAlarms().find(a => a.id === req.params.id);
     const ok = ackAlarm(req.params.id, user);
     if (ok) {
+        if (alarm) {
+            writeAudit({ timestamp: new Date().toISOString(), username: user, role: tokenUser.role, ip: req.socket.remoteAddress ?? 'unknown', target: 'SYS', command: 'ALARM_ACK', value: `${alarm.equipment}_${alarm.type}`, result: 'sent' });
+            // Repassa ao ESP32 para destravar o alarme e calar a sirene lá também
+            const id = crypto.randomUUID();
+            const cmd = { type: 'command', id, target: 'SYS', command: 'ALARM_ACK', value: `${alarm.equipment}_${alarm.type}`, user, role: tokenUser.role, reason: 'Reconhecimento pela IHM' };
+            pendingCommands.set(id, { user, role: tokenUser.role, target: 'SYS', command: 'ALARM_ACK', timestamp: Date.now() });
+            wss.clients.forEach(c => {
+                const cws = c as AuthenticatedWS;
+                if (cws.isDevice && cws.readyState === WebSocket.OPEN) cws.send(JSON.stringify(cmd));
+            });
+        }
         broadcastAlarms();
         res.json({ ok: true });
     } else {

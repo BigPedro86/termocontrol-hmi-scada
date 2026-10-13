@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { getUserByUsername, hashPassword, updateUser } from '../src/auth';
 import { writeAudit } from '../src/audit';
 import readline from 'readline';

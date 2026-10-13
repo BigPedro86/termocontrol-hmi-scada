@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const DEVICE_SECRET = 'esp32_termocontrol_device_secret_2024';
+require('dotenv').config(); const DEVICE_SECRET = process.env.DEVICE_SECRET;
 
 async function runTest() {
     console.log("Iniciando mock ESP32...");

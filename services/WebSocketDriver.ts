@@ -56,7 +56,10 @@ export class WebSocketDriver implements DeviceDriver {
                     if (data.type === 'state' && this.onStateChange) {
                         // O servidor repassa o state completo do ESP32
                         // Inclui heaters, tank, glp, allowedActions, alarms
-                        this.onStateChange(data.payload);
+                        // Formato padrão: { type:'state', payload }. Aceita o formato plano
+                        // antigo para não perder dados durante a atualização do servidor.
+                        const st = data.payload ?? data;
+                        if (st && typeof st === 'object') this.onStateChange(st);
                     }
                     else if (data.type === 'device_online') {
                         if (!this.deviceOnline) {
@@ -149,12 +152,13 @@ export class WebSocketDriver implements DeviceDriver {
         }
     }
 
-    async sendCommand(equipmentId: string, cmd: string, value: any): Promise<boolean> {
+    async sendCommand(equipmentId: string, cmd: string, value: any, id?: string, reason?: string): Promise<boolean> {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             console.warn('[WebSocketDriver] Socket not connected');
             return false;
         }
-        this.socket.send(JSON.stringify({ type: 'command', target: equipmentId, command: cmd, value }));
+        // id permite casar o ack do ESP32 com o comando pendente na tela
+        this.socket.send(JSON.stringify({ type: 'command', id, target: equipmentId, command: cmd, value, reason }));
         return true;
     }
 }

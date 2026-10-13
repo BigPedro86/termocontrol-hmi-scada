@@ -1391,6 +1391,118 @@ void test_n2_pressma_falha_ads() {
     TEST_ASSERT_TRUE(jsonStr.find("\"pressmA\":null") != std::string::npos);
 }
 
+// ─── Correções da análise (A-1 a A-4) ─────────────────────────────────────────
+
+static bool has_action(const std::vector<std::string>& v, const char* a) {
+    for (auto& x : v) if (x == a) return true;
+    return false;
+}
+
+// A-1: parado e sem impedimentos, a tela precisa poder pedir a partida.
+void test_allowed_start_quando_parado() {
+    BurnerLogic b; PumpLogic p;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    in.pumpFb = false; // bomba ainda parada (NO_PUMP_FLOW)
+    b.update(in, 1.0f);
+    auto actions = CommandHandler::getAllowedActions("AQ01", &b, &p, nullptr);
+    TEST_ASSERT_TRUE(has_action(actions, "BURNER_START"));
+    // E o comando oferecido precisa ser aceito.
+    CommandResult r = CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    TEST_ASSERT_TRUE(r.accepted);
+    // Já pedido: não oferece de novo.
+    b.update(in, 1.0f);
+    actions = CommandHandler::getAllowedActions("AQ01", &b, &p, nullptr);
+    TEST_ASSERT_FALSE(has_action(actions, "BURNER_START"));
+}
+
+// A-1: impedimento real (cadeia aberta) continua bloqueando a oferta e o comando.
+void test_allowed_start_bloqueado_cadeia() {
+    BurnerLogic b; PumpLogic p;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    in.chainOk = false;
+    b.update(in, 1.0f);
+    auto actions = CommandHandler::getAllowedActions("AQ01", &b, &p, nullptr);
+    TEST_ASSERT_FALSE(has_action(actions, "BURNER_START"));
+    CommandResult r = CommandHandler::handleCommand("AQ01", "BURNER_START", "", "Operator", &b, &p, nullptr, nullptr);
+    TEST_ASSERT_FALSE(r.accepted);
+    TEST_ASSERT_FALSE(b.getPermission());
+}
+
+// A-2: alvo SYS aceito para reconhecer e silenciar.
+void test_sys_alarm_ack_e_silence() {
+    HALMockTest hal;
+    AlarmEngine ae(&hal);
+    ae.process(0, 95.0f, 2.0f, false, false, false, false, false, false, false, false); // TEMP_HH (C)
+    TEST_ASSERT_TRUE(ae.isSirenOn());
+    CommandResult r = CommandHandler::handleCommand("SYS", "ALARM_SILENCE", "", "Operator", nullptr, nullptr, nullptr, &ae);
+    TEST_ASSERT_TRUE(r.accepted);
+    TEST_ASSERT_FALSE(ae.isSirenOn());
+    r = CommandHandler::handleCommand("SYS", "ALARM_ACK", "AQ01_TEMP_HH", "Operator", nullptr, nullptr, nullptr, &ae);
+    TEST_ASSERT_TRUE(r.accepted);
+    r = CommandHandler::handleCommand("SYS", "BURNER_START", "", "Admin", nullptr, nullptr, nullptr, &ae);
+    TEST_ASSERT_FALSE(r.accepted);
+}
+
+static const AlarmDef* find_alarm(AlarmEngine& ae, const std::string& code) {
+    for (auto& a : ae.getAlarms()) if (a.code == code) return &a;
+    return nullptr;
+}
+
+// A-3: alarme travado sai da lista depois de normalizar + reconhecer (nas duas ordens).
+void test_alarme_travado_destrava() {
+    HALMockTest hal;
+    AlarmEngine ae(&hal);
+    // Ordem 1: normaliza e depois reconhece
+    ae.process(0, 95.0f, 2.0f, false, false, false, false, false, false, false, false);
+    ae.process(0, 50.0f, 2.0f, false, false, false, false, false, false, false, false);
+    TEST_ASSERT_NOT_NULL(find_alarm(ae, "AQ01_TEMP_HH")); // travado, ainda publicado
+    ae.ackAlarm("AQ01_TEMP_HH");
+    ae.process(0, 50.0f, 2.0f, false, false, false, false, false, false, false, false);
+    TEST_ASSERT_NULL(find_alarm(ae, "AQ01_TEMP_HH"));
+    // Ordem 2: reconhece ativo e depois normaliza
+    ae.process(0, 95.0f, 2.0f, false, false, false, false, false, false, false, false);
+    ae.ackAlarm("AQ01_TEMP_HH");
+    ae.process(0, 95.0f, 2.0f, false, false, false, false, false, false, false, false);
+    TEST_ASSERT_NOT_NULL(find_alarm(ae, "AQ01_TEMP_HH")); // ainda ativo
+    ae.process(0, 50.0f, 2.0f, false, false, false, false, false, false, false, false);
+    ae.process(0, 50.0f, 2.0f, false, false, false, false, false, false, false, false);
+    TEST_ASSERT_NULL(find_alarm(ae, "AQ01_TEMP_HH"));
+}
+
+// A-3: alarme de reinício fica publicado até ser reconhecido, sem sirene.
+void test_alarme_reinicio_publicado() {
+    HALMockTest hal;
+    AlarmEngine ae(&hal);
+    const AlarmDef* a = find_alarm(ae, "SYS_ESP32_RESTART");
+    TEST_ASSERT_NOT_NULL(a);
+    TEST_ASSERT_TRUE(a->latched);
+    TEST_ASSERT_FALSE(ae.isSirenOn());
+    ae.ackAlarm("ALL");
+    ae.cleanup();
+    TEST_ASSERT_NULL(find_alarm(ae, "SYS_ESP32_RESTART"));
+}
+
+// A-4: discrepâncias separadas (gás sem permissão x gás sem ventilador).
+void test_discrepancias_separadas() {
+    BurnerLogic b;
+    HeaterInputs in = get_default_inputs();
+    in.cmd_start = false;
+    in.gasValves = true; in.fan = false;   // gás aberto sem vento e sem permissão
+    for (int i = 0; i < 5; i++) b.update(in, 1.0f);
+    TEST_ASSERT_TRUE(b.hasDiscGasNoFan());
+    TEST_ASSERT_TRUE(b.hasDiscGasNoPerm());
+    BurnerLogic b2;
+    HeaterInputs in2 = get_default_inputs();
+    in2.cmd_start = false;
+    in2.gasValves = true; in2.fan = true;  // vento ok, só sem permissão
+    for (int i = 0; i < 5; i++) b2.update(in2, 1.0f);
+    TEST_ASSERT_FALSE(b2.hasDiscGasNoFan());
+    TEST_ASSERT_TRUE(b2.hasDiscGasNoPerm());
+}
+
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_n2_pressma_falha_ads);
@@ -1469,5 +1581,11 @@ int main(int argc, char **argv) {
     RUN_TEST(test_mcp_falha_i2c);
     RUN_TEST(test_filtro_mcp);
     RUN_TEST(test_partida_normal);
+    RUN_TEST(test_allowed_start_quando_parado);
+    RUN_TEST(test_allowed_start_bloqueado_cadeia);
+    RUN_TEST(test_sys_alarm_ack_e_silence);
+    RUN_TEST(test_alarme_travado_destrava);
+    RUN_TEST(test_alarme_reinicio_publicado);
+    RUN_TEST(test_discrepancias_separadas);
     return UNITY_END();
 }

@@ -30,6 +30,6 @@ export interface DeviceDriver {
   ): void;
 
   disconnect(): void;
-  sendCommand(equipmentId: string, cmd: string, value: any): Promise<boolean>;
+  sendCommand(equipmentId: string, cmd: string, value: any, id?: string, reason?: string): Promise<boolean>;
   updateSettings(settings: any): void;
 }

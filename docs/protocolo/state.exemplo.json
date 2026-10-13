@@ -28,7 +28,7 @@
         "pv": 60.5,
         "sp": 60.0,
         "mv": 0.0,
-        "auto": true,
+        "auto": null,
         "alarms": null,
         "quality": "OK"
       },
@@ -64,7 +64,8 @@
   },
   "alarms": [
     {
-      "code": "TEMP_H",
+      "code": "AQ01_TEMP_H",
+      "description": "Temperatura alta (Pré-aviso)",
       "severity": "H",
       "active": false,
       "acked": true,

@@ -89,10 +89,11 @@ Consulte também `docs/PROTOCOLO.md` para campos detalhados.
 
 | type | payload | Descrição |
 |------|---------|-----------|
-| `state` | `SystemState` | Estado completo do sistema (ESP32 + GLP do servidor) |
+| `state` | `{ payload: SystemState }` | Estado completo do sistema (ESP32 + GLP do servidor), sempre com envelope `payload` |
+| `alarm_update` | `{ alarms }` | Alarmes ativos do banco (com `id`); enviado na conexão e a cada mudança |
 | `device_online` | — | ESP32 voltou online (após watchdog detectar reconexão) |
 | `device_offline` | — | ESP32 não enviou state há > 6s |
-| `ack` | `{ id, accepted, reason }` | Resposta do ESP32 repassada à IHM |
+| `ack` | `{ id, accepted, reason }` | Resposta do ESP32 repassada à IHM, ou `DEVICE_OFFLINE` gerado pelo servidor |
 
 ### Servidor → ESP32
 

@@ -17,6 +17,8 @@ public:
     bool isSwLimitLatched() const { return swLimitLatched; }
     bool isIgnitionTimeout() const { return ignitionTimeout; }
     bool hasDiscrepancy() const { return discrepancy; }
+    bool hasDiscGasNoPerm() const { return discGasNoPerm; }
+    bool hasDiscGasNoFan() const { return discGasNoFan; }
     
     float getPhaseTime() const { return purgeTimer; }
     int getStarts() const { return 0; } // TODO: track starts

@@ -3,8 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const secret = 'esp32_termocontrol_device_secret_2024';
-const url = ws://localhost:3000/?device=true&secret=;
+// Segredo e porta vêm do server/.env (nunca fixos no código — regra 11)
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const secret = process.env.DEVICE_SECRET;
+if (!secret) { console.error('DEVICE_SECRET não definido em server/.env'); process.exit(1); }
+const port = process.env.PORT || 3000;
+const host = process.env.FAKE_HOST || 'localhost';
+const url = `ws://${host}:${port}/?device=true&secret=${encodeURIComponent(secret)}`;
 
 const contratoPath = path.join(__dirname, '../../docs/protocolo/state.exemplo.json');
 let payload = JSON.parse(fs.readFileSync(contratoPath, 'utf8'));
@@ -32,7 +37,7 @@ function connect() {
     try {
       const msg = JSON.parse(data);
       if (msg.type === 'command') {
-        console.log(Comando recebido: ID= Target= CMD= Value=);
+        console.log(`Comando recebido: ID=${msg.id} Target=${msg.target} CMD=${msg.command} Value=${msg.value}`);
         let accepted = false;
         let reason = 'INVALID_COMMAND';
 
@@ -105,7 +110,7 @@ function sendState() {
   const isLowLevel = process.argv.includes('--low-level') || lowLevel;
   const isNoNovus = process.argv.includes('--no-novus') || noNovus;
 
-  // L�gica da Sequ�ncia
+  // Lógica da Sequência
   if (emergency || isLowLevel || lflLockout || isSensorFault) {
       if (phase !== 'OFF' && phase !== 'POST_PURGE') {
           phase = 'POST_PURGE';
@@ -169,13 +174,14 @@ function sendState() {
   if (isLowLevel) h.burner.blockReasons.push('TANK_LOW_LEVEL');
   if (isSensorFault) h.burner.blockReasons.push('TEMP_SENSOR_FAULT');
 
-  // Alarmes din�micos
+  // Alarmes dinâmicos
   payload.alarms = [];
-  if (emergency) payload.alarms.push({ code: 'ESTOP', severity: 'HH', active: true, acked: false, since: payload.uptime_s });
-  if (isLowLevel) payload.alarms.push({ code: 'LEVEL_LL', severity: 'HH', active: true, acked: false, since: payload.uptime_s });
-  if (lflLockout) payload.alarms.push({ code: 'LFL_LOCKOUT', severity: 'HH', active: true, acked: false, since: payload.uptime_s });
-  if (isSensorFault) payload.alarms.push({ code: 'TEMP_FAULT', severity: 'HH', active: true, acked: false, since: payload.uptime_s });
-  if (isNoNovus) payload.alarms.push({ code: 'MODBUS_FAULT', severity: 'HH', active: true, acked: false, since: payload.uptime_s });
+  const al = (code, description, severity = 'C') =>
+    payload.alarms.push({ code, description, severity, active: true, acked: false, since: payload.uptime_s });
+  if (isLowLevel) al('TX01_LOW_LEVEL', 'Nível baixo no tanque de expansão — sistema parado');
+  if (lflLockout) al('AQ01_LFL_LOCKOUT', 'Bloqueio do programador de chama');
+  if (isSensorFault) al('AQ01_TEMP_SENSOR_FAULT', 'Falha no sensor de temperatura');
+  if (isNoNovus) al('AQ01_NOVUS_COMM_LOST', 'Perda de comunicação com Modbus', 'H');
 
   if (isNoNovus) {
     h.novus.commOk = false;

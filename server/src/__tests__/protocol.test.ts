@@ -47,17 +47,17 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
     });
 
     it('ESP32 envia state plano e HMI recebe o estado mesclado atualizado', (done) => {
-        deviceWs = new WebSocket(`ws://localhost:${port}/?device=true&secret=esp32_termocontrol_device_secret_2024`);
+        deviceWs = new WebSocket(`ws://localhost:${port}/?device=true&secret=${process.env.DEVICE_SECRET}`);
         
         deviceWs.on('open', () => {
-            const stateStr = fs.readFileSync('c:/Projetos/termocontrol-hmi_scada/docs/protocolo/state.exemplo.json', 'utf-8');
+            const stateStr = fs.readFileSync(path.join(__dirname, '../../../docs/protocolo/state.exemplo.json'), 'utf-8');
             deviceWs.send(stateStr);
         });
 
         const handler2 = (data: WebSocket.Data) => {
             const msg = JSON.parse(data.toString());
             if (msg.type === 'state') {
-                const payload = msg.payload || msg;
+                const payload = msg.payload;
                 const aq01 = payload.heaters?.find((h: any) => h.id === 'AQ01');
                 if (aq01 && aq01.temp.value === 60.5) {
                     expect(aq01.temp.quality).toBe('OK');
@@ -87,7 +87,8 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
         const handler = (data: WebSocket.Data) => {
             const msg = JSON.parse(data.toString());
             if (msg.type === 'state') {
-                const aq01 = msg.heaters?.find((h: any) => h.id === 'AQ01');
+                expect(msg.payload).toBeDefined(); // formato único { type, payload }
+                const aq01 = msg.payload?.heaters?.find((h: any) => h.id === 'AQ01');
                 if (aq01 && aq01.temp.value === 50.0) {
                     expect(aq01.name).toBe('Aquecedor 01'); // name mantido
                     expect(aq01.temp.value).toBe(50.0);
@@ -205,5 +206,47 @@ describe('Protocolo Flat (N1, N2, N14, N15)', () => {
                 done(e);
             }
         }, 1500);
+    });
+
+    it('Reconhecer alarme pela IHM repassa ALARM_ACK (alvo SYS, com o código) ao ESP32', (done) => {
+        const { getActiveAlarms } = require('../alarms');
+        const { getUserByUsername } = require('../auth');
+        const token = generateToken(getUserByUsername('admin'));
+
+        const devHandler = (data: WebSocket.Data) => {
+            const msg = JSON.parse(data.toString());
+            if (msg.type === 'command' && msg.command === 'ALARM_ACK') {
+                expect(msg.target).toBe('SYS');
+                expect(msg.value).toBe('AQ02_TEMP_HH');
+                expect(msg.user).toBe('admin');
+                deviceWs.off('message', devHandler);
+                done();
+            }
+        };
+        deviceWs.on('message', devHandler);
+
+        deviceWs.send(JSON.stringify({
+            type: 'state', seq: 99, uptime_s: 99,
+            alarms: [{ code: 'AQ02_TEMP_HH', description: 'Temperatura alta (Corte)', severity: 'C', active: true, acked: false, since: 1 }],
+        }));
+        setTimeout(async () => {
+            const alarm = getActiveAlarms().find((a: any) => a.equipment === 'AQ02' && a.type === 'TEMP_HH');
+            expect(alarm).toBeDefined();
+            expect(alarm.description).toBe('Temperatura alta (Corte)');
+            const r = await fetch(`http://localhost:${port}/alarms/${alarm.id}/ack`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+            expect(r.status).toBe(200);
+        }, 300);
+    });
+
+    it('Alarme malformado do ESP32 não impede o estado de chegar à IHM', (done) => {
+        const handler = (data: WebSocket.Data) => {
+            const msg = JSON.parse(data.toString());
+            if (msg.type === 'state' && msg.payload?.seq === 777) {
+                hmiWs.off('message', handler);
+                done();
+            }
+        };
+        hmiWs.on('message', handler);
+        deviceWs.send(JSON.stringify({ type: 'state', seq: 777, alarms: [{ severity: 'C', active: true }, null] }));
     });
 });

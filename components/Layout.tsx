@@ -6,7 +6,7 @@ import { AlarmStrip } from './ui/AlarmStrip';
 import { useApp } from '../context/AppContext';
 
 const Layout: React.FC = () => {
-  const { state, currentUser, sendCommand } = useApp();
+  const { state, currentUser, ackAlarm } = useApp();
   
   const activeAlarms = state?.alarms?.filter(a => !a.cleared) ?? [];
   
@@ -31,7 +31,7 @@ const Layout: React.FC = () => {
           <AlarmStrip 
             alarms={activeAlarms} 
             canAck={canAck} 
-            onAck={(id) => sendCommand(latestAlarm.equipment, 'ALARM_ACK', id)}
+            onAck={(id) => ackAlarm(id)}
           />
         ) : (
           <AlarmStrip alarms={[]} />

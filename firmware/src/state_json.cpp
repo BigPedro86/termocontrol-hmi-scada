@@ -64,7 +64,7 @@ std::string generateStateJson(unsigned long now,
         } else {
             n["pv"] = nullptr; n["sp"] = nullptr; n["mv"] = nullptr;
         }
-        n["auto"] = true;
+        n["auto"] = nullptr; // N/M: modo do Novus ainda não é lido (regra 6)
         n["alarms"] = nullptr; // TODO: Validar bits de alarme no equipamento Novus
         n["quality"] = in.novus.quality == Quality::OK ? "OK" : "COMM_LOST";
         
@@ -133,9 +133,10 @@ std::string generateStateJson(unsigned long now,
         if (a.active || a.latched) {
             JsonObject alObj = alArr.add<JsonObject>();
             alObj["code"] = a.code;
+            alObj["description"] = a.description;
             alObj["severity"] = std::string(1, a.severity);
             alObj["active"] = a.active;
-            alObj["acked"] = false;
+            alObj["acked"] = a.acked;
             alObj["since"] = a.since;
         }
     }

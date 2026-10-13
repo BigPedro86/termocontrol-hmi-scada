@@ -24,7 +24,11 @@ export interface TokenPayload {
     exp?: number;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_CHANGE_IN_PRODUCTION';
+const JWT_SECRET = process.env.JWT_SECRET || '';
+if (JWT_SECRET.length < 32) {
+    // Sem segredo forte não há como assinar tokens com segurança (nada de valor padrão)
+    throw new Error('JWT_SECRET ausente ou com menos de 32 caracteres no .env');
+}
 const JWT_EXPIRES_IN = '8h';
 
 const DATA_DIR = path.resolve(__dirname, '../../data');
